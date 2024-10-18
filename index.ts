@@ -432,12 +432,16 @@ client.on("threadCreate", async (thread) => {
     const message = firstMessage?.content || "";
     const author = firstMessage?.author.username || "";
 
-    thread.sendTyping();
+    thread.send(
+      "Please note that from the 19th to 27th October, our team will be engaged in an in-person sprint. During this time, responses may be slower than usual. We appreciate your patience and will get back to you as soon as possible. Thank you!"
+    );
 
+    thread.sendTyping();
     const answer = await getAnswerFromOpenAIAssistant(message, "");
     const role = thread.guild.roles.cache.find(
       (role) => role.name === "Glific Support"
     );
+
     thread.send(answer);
     thread.send(
       role?.toString() +
