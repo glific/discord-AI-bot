@@ -399,7 +399,6 @@ client.on("ready", async () => {
 });
 client.login(process.env.BOT_TOKEN);
 client.on("threadCreate", async (thread) => {
-    console.log("working");
     if (thread.parent?.type === ChannelType.GuildForum &&
         thread.parentId === process.env.CHANNEL_ID) {
         const firstMessage = await thread.fetchStarterMessage();
