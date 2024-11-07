@@ -16,6 +16,7 @@ import { google } from "googleapis";
 import bodyParser from "body-parser";
 import OpenAI from "openai";
 import { sleep } from "openai/core";
+import dayjs from "dayjs";
 
 dotenv.config();
 const app = express();
@@ -29,6 +30,7 @@ app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });
 
+const spreadsheetId = process.env.SPREADSHEET_ID || "";
 const categoryPrompt = `You are an intelligent AI assistant built by Glific team to help Glific"s team analyze the incoming  queries on Glific"s NGO-support channel on discord. Glific is a chatbot platform and the discord channel for NGOs using the chatbot to share their issues and seek support. You will get NGO query as input, your main purpose is to analyze the query and categorize or tag  the query raised in top 3 most relevant categories and also share your thinking for choosing the most relevant tag in the Reason attribute
 
 Generate the output in following JSON format and don't add any other words apart from the output in the following format
@@ -64,12 +66,34 @@ Example 3:
 }
 `;
 
-const writeDataToSheets = async (
-  question: string,
-  answer: string,
-  category: string,
-  author: string
-) => {
+const tagIds = [
+  { id: "1037985352536830013", name: "Knowledge Gap" },
+  { id: "1037985383465627679", name: "Bug" },
+  { id: "1037985445172215839", name: "New Feature" },
+  { id: "1044545382782349393", name: "Resolved" },
+  { id: "1044546639513276416", name: "Documentation update" },
+  { id: "1052438915778363422", name: "No Response" },
+  { id: "1052458635298619474", name: "Priority 1" },
+  { id: "1052798794221240321", name: "Priority 2" },
+  { id: "1057180917623435295", name: "Priority 3" },
+  { id: "1057181111920369674", name: "Priority 4" },
+  { id: "1206900864086974504", name: "In Process" },
+  { id: "1207181596482871336", name: "Pending from Org" },
+  { id: "1213041779310469180", name: "Bug at Meta's End" },
+  { id: "1213042817652232222", name: "Task" },
+  { id: "1240173333597917224", name: "Not Replicable" },
+  { id: "1269832617830777016", name: "Nov" },
+  { id: "1271417466555338847", name: "Resources" },
+  { id: "1271417514110357525", name: "Closed" },
+  { id: "1280027263685099604", name: "Sept" },
+  { id: "1290533381821567030", name: "Oct" },
+];
+
+const writeToSheets = async (values: any) => {
+  const requestBody = {
+    values,
+  };
+
   const auth = new GoogleAuth({
     scopes: "https://www.googleapis.com/auth/spreadsheets",
     credentials: {
@@ -78,37 +102,85 @@ const writeDataToSheets = async (
     },
   });
 
-  let tag1 = "";
-  let tag2 = "";
-  let tag3 = "";
-  let reason = "";
-
-  try {
-    const values = JSON.parse(category);
-    tag1 = values["Most relevant tag"];
-    tag2 = values["2nd most relevant tag"];
-    tag3 = values["3rd most relevant tag"];
-    reason = values["Reason"];
-  } catch (error) {}
-
   const service = google.sheets({ version: "v4", auth });
-  let values = [
-    [new Date(), author, question, tag1, tag2, tag3, reason, category, answer],
-  ];
-  const requestBody = {
-    values,
-  };
+
   try {
     const result = await service.spreadsheets.values.append({
-      spreadsheetId: process.env.SPREADSHEET_ID || "",
-      range: "A:J",
+      spreadsheetId,
       valueInputOption: "RAW",
       requestBody,
+      insertDataOption: "INSERT_ROWS",
+      range: "A1",
     });
     console.log("%d cells updated.", result.data.updates?.updatedCells);
     return result;
   } catch (err) {
     // TODO (Developer) - Handle exception
+    throw err;
+  }
+};
+
+const updateSheets = async (id: string, values: any) => {
+  const auth = new GoogleAuth({
+    scopes: "https://www.googleapis.com/auth/spreadsheets",
+    credentials: {
+      client_email: process.env.GCP_CLIENT_EMAIL,
+      private_key: process.env.GCP_PRIVATE_KEY?.split("\\n").join("\n"),
+    },
+  });
+
+  const service = google.sheets({ version: "v4", auth });
+  try {
+    // Step 1: Get the current sheet data to find the row index for the ID
+    const sheetData = await service.spreadsheets.values.get({
+      spreadsheetId,
+      range: "A1:Z1005",
+    });
+
+    const rows = sheetData.data.values || [];
+    const header = rows[0];
+    const idIndex = header.indexOf("thread_id");
+
+    if (idIndex === -1) {
+      console.log("thread id not found");
+      return;
+    }
+
+    // Find the row with the matching ID
+    const rowIndex = rows.findIndex((row) => row[idIndex] === id);
+
+    if (rowIndex === -1) {
+      console.log("Row with the specified ID not found");
+    }
+
+    const updatePromises = Object.entries(values).map(
+      async ([column, newValue]) => {
+        const columnIndex = header.indexOf(column);
+        if (columnIndex === -1) {
+          console.log(`Column "${column}" not found`);
+          return;
+        }
+
+        const cellRange = `${String.fromCharCode(65 + columnIndex)}${
+          rowIndex + 1
+        }`;
+
+        return service.spreadsheets.values.update({
+          spreadsheetId,
+          range: cellRange,
+          valueInputOption: "RAW",
+          requestBody: {
+            values: [[newValue]],
+          },
+        });
+      }
+    );
+
+    const results = await Promise.all(updatePromises);
+    console.log("%d cells updated.", results.length);
+    return results;
+  } catch (err) {
+    console.error("Error updating sheet:", err);
     throw err;
   }
 };
@@ -181,7 +253,9 @@ const getAnswerFromOpenAIAssistant = async (
       await sleep(1000);
     }
 
-    const messages = await openai.beta.threads.messages.list(run.thread_id);
+    const messages: any = await openai.beta.threads.messages.list(
+      run.thread_id
+    );
     for (const message of messages.data.reverse()) {
       if (message.role === "assistant") {
         return message.content[0].text.value;
@@ -429,6 +503,8 @@ client.on("threadCreate", async (thread) => {
     thread.parentId === process.env.CHANNEL_ID
   ) {
     const firstMessage = await thread.fetchStarterMessage();
+    const threadId = thread.id;
+    const title = thread.name;
     const message = firstMessage?.content || "";
     const author = firstMessage?.author.username || "";
 
@@ -448,6 +524,63 @@ client.on("threadCreate", async (thread) => {
       message,
       categoryPrompt
     );
-    await writeDataToSheets(message, answer, category, author);
+
+    let values = [
+      [threadId, dayjs().format("YYYY-MM-DD HH:MM"), author, title, message],
+    ];
+
+    await writeToSheets(values);
+  }
+});
+
+client.on("threadUpdate", async (oldThread, newThread) => {
+  if (
+    newThread.parent?.type === ChannelType.GuildForum &&
+    newThread.parentId === process.env.CHANNEL_ID
+  ) {
+    let closureTime = "";
+    let closedAt = "";
+
+    const oldTags = oldThread.appliedTags;
+    const newTags = newThread.appliedTags;
+
+    const addedTags = newTags.filter((tag) => !oldTags.includes(tag));
+    const removedTags = oldTags.filter((tag) => !newTags.includes(tag));
+
+    const createdTimestamp = (newThread as any)._createdTimestamp;
+    const threadId = newThread.id;
+    const appliedTagsIds = newThread.appliedTags;
+
+    const appliedTagsNames = appliedTagsIds
+      .map((id) => tagIds.find((tag) => tag.id === id)?.name)
+      .filter(Boolean);
+
+    const closed = addedTags.includes("1044545382782349393");
+
+    if (closed) {
+      closureTime = dayjs().diff(createdTimestamp, "minute").toString();
+      closedAt = dayjs().format("YYYY-MM-DD HH:MM");
+    }
+
+    if (removedTags.includes("1044545382782349393")) {
+      closureTime = "";
+      closedAt = "";
+    }
+
+    let values: any = {
+      "Closure Time": closureTime,
+      Tags: appliedTagsNames.join(", "),
+      "Closed at": closedAt,
+    };
+
+    if (oldTags.length === 0 && newTags.length > 0) {
+      values = {
+        ...values,
+        "First Response": dayjs().format("YYYY-MM-DD HH:MM"),
+        "Response time": dayjs().diff(createdTimestamp, "minute").toString(),
+      };
+    }
+
+    await updateSheets(threadId, values);
   }
 });
