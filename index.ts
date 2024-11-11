@@ -526,7 +526,19 @@ client.on("threadCreate", async (thread) => {
     );
 
     let values = [
-      [threadId, dayjs().format("YYYY-MM-DD HH:MM"), author, title, message],
+      [
+        threadId,
+        dayjs().format("YYYY-MM-DD HH:MM"),
+        author,
+        title,
+        message,
+        "", //tags
+        "", //First Response
+        "", //Response time
+        "", //Closed at
+        "", //Closure Time,
+        answer,
+      ],
     ];
 
     await writeToSheets(values);

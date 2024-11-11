@@ -414,7 +414,19 @@ client.on("threadCreate", async (thread) => {
             " team please check if this needs any further attention.");
         const category = await getAnswerFromOpenAIAssistant(message, categoryPrompt);
         let values = [
-            [threadId, dayjs().format("YYYY-MM-DD HH:MM"), author, title, message],
+            [
+                threadId,
+                dayjs().format("YYYY-MM-DD HH:MM"),
+                author,
+                title,
+                message,
+                "", //tags
+                "", //First Response
+                "", //Response time
+                "", //Closed at
+                "", //Closure Time,
+                answer,
+            ],
         ];
         await writeToSheets(values);
     }
