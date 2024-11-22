@@ -210,7 +210,7 @@ const getAnswerFromOpenAIAssistant = async (
   });
 
   const assistant = await openai.beta.assistants.retrieve(
-    process.env.OPENAI_ASSISTANT_ID || ""
+    process.env.ASSISTANT_ID || ""
   );
 
   const thread = await openai.beta.threads.create();
