@@ -1,3 +1,4 @@
+import "isomorphic-fetch"; // Automatically polyfills fetch
 import dotenv from "dotenv";
 import DiscordJS, {
   ActionRowBuilder,
@@ -9,7 +10,6 @@ import DiscordJS, {
   StringSelectMenuOptionBuilder,
   ThreadChannel,
 } from "discord.js";
-import axios from "axios";
 import express from "express";
 import { GoogleAuth } from "google-auth-library";
 import { google } from "googleapis";
@@ -17,11 +17,12 @@ import bodyParser from "body-parser";
 import OpenAI from "openai";
 import { sleep } from "openai/core";
 import dayjs from "dayjs";
+import pino from "pino";
+import { createPinoBrowserSend, createWriteStream } from "pino-logflare";
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
@@ -31,40 +32,6 @@ app.listen(PORT, () => {
 });
 
 const spreadsheetId = process.env.SPREADSHEET_ID || "";
-const categoryPrompt = `You are an intelligent AI assistant built by Glific team to help Glific"s team analyze the incoming  queries on Glific"s NGO-support channel on discord. Glific is a chatbot platform and the discord channel for NGOs using the chatbot to share their issues and seek support. You will get NGO query as input, your main purpose is to analyze the query and categorize or tag  the query raised in top 3 most relevant categories and also share your thinking for choosing the most relevant tag in the Reason attribute
-
-Generate the output in following JSON format and don't add any other words apart from the output in the following format
-
-{
-"Most relevant tag": "Tag 1",
-"2nd most relevant tag": " Tag 2",
-"3rd most relevant tag": "Tag 3",
-"Reason": " Reason for selecting the tags"
-}
-
-Here are a few examples for few NGO queries
-Example 1:
-{
-"Most relevant tag": "Knowledge",
-"2nd most relevant tag":"Whatsapp Manager",
-"3rd most relevant tag":"",
-"Reason":""
-}
-Example 2: 
-{
-"Most relevant tag": "Fb verification",
-"2nd most relevant tag":"1-1 support",
-"3rd most relevant tag":"",
-"Reason":"",
-}
-Example 3: 
-{
-"Most relevant tag": "Bug",
-"2nd most relevant tag":"Profiles",
-"3rd most relevant tag":"Not urgent",
-"Reason":""
-}
-`;
 
 const tagIds = [
   { id: "1037985352536830013", name: "Knowledge Gap" },
@@ -88,6 +55,37 @@ const tagIds = [
   { id: "1280027263685099604", name: "Sept" },
   { id: "1290533381821567030", name: "Oct" },
 ];
+
+const setLogs = (error: any) => {
+  const sourceToken = process.env.LOG_FLARE_SOURCE;
+  const apiKey = process.env.LOG_FLARE_API;
+
+  if (sourceToken && apiKey) {
+    const stream = createWriteStream({
+      apiKey,
+      sourceToken,
+    });
+
+    const send = createPinoBrowserSend({
+      apiKey,
+      sourceToken,
+    });
+
+    const logger = pino(
+      {
+        browser: {
+          transmit: {
+            // @ts-ignore
+            send,
+          },
+        },
+      },
+      stream
+    );
+
+    logger.error(error);
+  }
+};
 
 const writeToSheets = async (values: any) => {
   const requestBody = {
@@ -115,7 +113,7 @@ const writeToSheets = async (values: any) => {
     console.log("%d cells updated.", result.data.updates?.updatedCells);
     return result;
   } catch (err) {
-    // TODO (Developer) - Handle exception
+    setLogs(err);
     throw err;
   }
 };
@@ -142,7 +140,7 @@ const updateSheets = async (id: string, values: any) => {
     const idIndex = header.indexOf("thread_id");
 
     if (idIndex === -1) {
-      console.log("thread id not found");
+      setLogs({ message: "thread column not found", threadId: id });
       return;
     }
 
@@ -150,14 +148,20 @@ const updateSheets = async (id: string, values: any) => {
     const rowIndex = rows.findIndex((row) => row[idIndex] === id);
 
     if (rowIndex === -1) {
-      console.log("Row with the specified ID not found");
+      setLogs({
+        message: "Row with the specified ID not found",
+        threadId: id,
+      });
     }
 
     const updatePromises = Object.entries(values).map(
       async ([column, newValue]) => {
         const columnIndex = header.indexOf(column);
         if (columnIndex === -1) {
-          console.log(`Column "${column}" not found`);
+          setLogs({
+            message: "Column not found",
+            threadId: id,
+          });
           return;
         }
 
@@ -180,7 +184,11 @@ const updateSheets = async (id: string, values: any) => {
     console.log("%d cells updated.", results.length);
     return results;
   } catch (err) {
-    console.error("Error updating sheet:", err);
+    setLogs({
+      error: err,
+      message: "Error updating sheet",
+      threadId: id,
+    });
     throw err;
   }
 };
@@ -190,26 +198,6 @@ app.post("/chat", async (req: any, res: any) => {
 
   res(getAnswerFromOpenAIAssistant(user_input, ""));
 });
-const getAnswerFromJugalbandi = async (message: string, prompt: string) => {
-  const apiUrl = process.env.API_URL;
-
-  const params = {
-    uuid_number: process.env.GLIFIC_DOC_UUID || "",
-    query_string: encodeURIComponent(message),
-    prompt: encodeURIComponent(prompt),
-  };
-  // Convert the params object into a query string
-  const queryParams = new URLSearchParams(params).toString();
-
-  try {
-    const result = await axios.get(`${apiUrl}?${queryParams}`, {
-      timeout: 120000,
-    });
-    return result.data.answer;
-  } catch (e) {
-    return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
-  }
-};
 
 const getAnswerFromOpenAIAssistant = async (
   message: string,
@@ -222,7 +210,7 @@ const getAnswerFromOpenAIAssistant = async (
   });
 
   const assistant = await openai.beta.assistants.retrieve(
-    process.env.OPENAI_ASSISTANT_ID || ""
+    process.env.ASSISTANT_ID || ""
   );
 
   const thread = await openai.beta.threads.create();
@@ -248,6 +236,7 @@ const getAnswerFromOpenAIAssistant = async (
           "expired",
         ].includes(run.status)
       ) {
+        setLogs(JSON.stringify(run));
         return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
       }
       await sleep(1000);
@@ -262,9 +251,11 @@ const getAnswerFromOpenAIAssistant = async (
       }
     }
 
+    setLogs(JSON.stringify({ run, message }));
     return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
   } catch (e) {
-    return "Sorry, I am not able to answer this question due to timeout in API. Please try again later";
+    setLogs(JSON.stringify(e));
+    return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
   }
 };
 
@@ -309,6 +300,10 @@ async function registerCommand() {
     }
   } catch (error) {
     console.error("Error registering command:", error);
+    setLogs({
+      message: "Error registering command",
+      error,
+    });
   }
 }
 
@@ -494,6 +489,7 @@ client.on("interactionCreate", async (interaction) => {
 
 client.on("ready", async () => {
   registerCommand();
+  setLogs("Bot is ready");
 });
 client.login(process.env.BOT_TOKEN);
 
@@ -519,10 +515,6 @@ client.on("threadCreate", async (thread) => {
     thread.send(
       role?.toString() +
         " team please check if this needs any further attention."
-    );
-    const category = await getAnswerFromOpenAIAssistant(
-      message,
-      categoryPrompt
     );
 
     let values = [
