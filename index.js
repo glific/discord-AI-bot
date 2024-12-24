@@ -165,7 +165,7 @@ const getAnswerFromOpenAIAssistant = async (message, prompt) => {
         organization: process.env.OPENAI_ORGID,
         // project: process.env.OPENAI_PROJECTID,
     });
-    const assistant = await openai.beta.assistants.retrieve(process.env.OPENAI_ASSISTANT_ID || "");
+    const assistant = await openai.beta.assistants.retrieve(process.env.ASSISTANT_ID || "");
     const thread = await openai.beta.threads.create();
     await openai.beta.threads.messages.create(thread.id, {
         role: "user",
@@ -385,6 +385,7 @@ client.on("interactionCreate", async (interaction) => {
 });
 client.on("ready", async () => {
     registerCommand();
+    setLogs("Bot is ready");
 });
 client.login(process.env.BOT_TOKEN);
 client.on("threadCreate", async (thread) => {
@@ -396,6 +397,7 @@ client.on("threadCreate", async (thread) => {
         const message = firstMessage?.content || "";
         const author = firstMessage?.author.username || "";
         thread.sendTyping();
+        thread.send("Thank you for reaching out to our support team. Please note that our team is on a year-end break from 25th December to 2nd January. During this time, our support operations will be limited. Our team will address critical issues as a priority, while non-critical queries will be responded to after the break. We appreciate your understanding and wish you a wonderful holiday season!");
         const answer = await getAnswerFromOpenAIAssistant(message, "");
         const role = thread.guild.roles.cache.find((role) => role.name === "Glific Support");
         thread.send(answer);
