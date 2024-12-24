@@ -505,6 +505,9 @@ client.on("threadCreate", async (thread) => {
     const author = firstMessage?.author.username || "";
 
     thread.sendTyping();
+    thread.send(
+      "Thank you for reaching out to our support team. Please note that our team is on a year-end break from 25th December to 2nd January. During this time, our support operations will be limited. Our team will address critical issues as a priority, while non-critical queries will be responded to after the break. We appreciate your understanding and wish you a wonderful holiday season!"
+    );
 
     const answer = await getAnswerFromOpenAIAssistant(message, "");
     const role = thread.guild.roles.cache.find(
