@@ -1,7 +1,8 @@
 # Discord AI bot
 
-## Navigate to the bot directories
 ### Steps to Restart the Bots
+
+## Navigate to the bot directories
 cd /path/to/discord-AI-bot
 pm2 start index.js --name "glific-bot"
 
