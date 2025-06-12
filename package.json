@@ -28,9 +28,14 @@
   },
   "type": "module",
   "scripts": {
-    "start": "ts-node-esm index.ts"
+    "start": "tsx index.ts",
+    "dev": "tsx watch index.ts"
   },
   "engines": {
     "node": ">16.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4"
   }
 }
