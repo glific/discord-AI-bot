@@ -37,6 +37,10 @@ yarn install
 Create a `.env` file in the root directory:
 Copy from .env.example
 
+```bash
+    cp .env.example .env
+```
+
 ### Development
 
 ```bash

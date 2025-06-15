@@ -59,8 +59,21 @@ export async function registerCommand(client: Client) {
           },
         ],
       });
+
+      const supportMetrics = await guild.commands.create({
+        name: "support-metrics",
+        description: "Share support metrics",
+        options: [
+          {
+            name: "days",
+            description: "Number of days to fetch metrics for",
+            type: ApplicationCommandOptionType.String,
+            required: true,
+          },
+        ],
+      });
       console.log(
-        `Registered commands: ${command.name}, ${closeTicketCommand.name}, ${postCommand.name}`
+        `Registered commands: ${command.name}, ${closeTicketCommand.name}, ${postCommand.name}, ${supportMetrics.name}`
       );
     }
   } catch (error) {
@@ -82,7 +95,8 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
     const title = thread.name;
     const message = firstMessage?.content ?? "";
     const author = firstMessage?.author.username ?? "";
-    const createdAt = firstMessage?.createdAt;
+    const userId = firstMessage?.author.id ?? "";
+    const createdAt = firstMessage?.createdTimestamp;
 
     thread.sendTyping();
 
@@ -112,14 +126,14 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
     });
 
     thread.send(
-      role?.toString() +
-        " team please check if this needs any further attention."
+      `<@${userId}> If you still have questions, feel free to ask the bot using the /askglific command. Our support team will reach out shortly to assist you further!
+      ${role?.toString()} team please check if this needs any further attention.`
     );
 
     let values = [
       [
         threadId,
-        dayjs(createdAt).format("YYYY-MM-DD HH:MM"),
+        dayjs(createdAt).format("YYYY-MM-DD HH:mm"),
         author,
         title,
         "", //tags
@@ -153,7 +167,7 @@ export const onThreadUpdate = async (
 
     const removedTags = oldTags.filter((tag) => !newTags.includes(tag));
 
-    const createdTimestamp = (newThread as any)._createdTimestamp;
+    const createdTimestamp = newThread.createdTimestamp;
     const threadId = newThread.id;
     const appliedTagsIds = newThread.appliedTags;
 
@@ -173,12 +187,12 @@ export const onThreadUpdate = async (
     if (oldTags.length === 0 && newTags.length > 0) {
       values = {
         ...values,
-        "First Response": dayjs().format("YYYY-MM-DD HH:MM"),
+        "First Response": dayjs().format("YYYY-MM-DD HH:mm"),
         "Response time": dayjs().diff(createdTimestamp, "minute").toString(),
       };
     }
 
-    await updateSheets(threadId, values);
+    await updateSheets(threadId, values, []);
   }
 };
 
@@ -189,24 +203,43 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
   const threadId = customId.split("_").pop();
   const isHelpful = customId.startsWith("ai_helpful_");
   const isNotHelpFul = customId.startsWith("ai_not_helpful_");
-  const userName = interaction.user.username;
 
-  await interaction.deferReply({ ephemeral: true });
+  // Custom message instead of "Bot is thinking"
+  await interaction.reply({
+    content: `Recording your feedback...`,
+    ephemeral: true,
+  });
 
   try {
-    const feedbackValues = [
-      threadId,
-      dayjs(thread.createdAt).format("YYYY-MM-DD HH:MM"),
-      userName,
-      `${(isHelpful && "Yes") || (isNotHelpFul && "No") || "No response"}`,
+    const writeValues = [
+      [
+        threadId, //thread_id
+        dayjs(thread.createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
+        "", // Raised By
+        "", // Title
+        "", // Tags
+        "", // First Response
+        "", // Response time
+        "", // Closed at
+        "", // Closure Time
+        "", // Description
+        "", // Post
+        "", // AI response,
+        `${(isHelpful && "Yes") || (isNotHelpFul && "No") || "No response"}`, // AI Feedback,
+        "", // Rating
+      ],
     ];
 
     if (threadId) {
-      await updateSheets(threadId, {
-        "AI Feedback": `${
-          (isHelpful && "Yes") || (isNotHelpFul && "No") || "No response"
-        }`,
-      });
+      await updateSheets(
+        threadId,
+        {
+          "AI Feedback": `${
+            (isHelpful && "Yes") || (isNotHelpFul && "No") || "No response"
+          }`,
+        },
+        writeValues
+      );
     }
 
     // Acknowledge the feedback

@@ -1,7 +1,6 @@
 import { google } from "googleapis";
 import { GoogleAuth } from "google-auth-library";
 import setLogs from "./logs";
-import { SPREADSHEET_ID } from "../constants";
 
 export const testSheetsAccess = async () => {
   const auth = new GoogleAuth({
@@ -17,7 +16,7 @@ export const testSheetsAccess = async () => {
   try {
     // Just try to get basic spreadsheet info
     const response = await service.spreadsheets.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: process.env.SPREADSHEET_ID,
     });
     console.log(
       "✅ Spreadsheet access successful:",
@@ -47,7 +46,7 @@ export const writeToSheets = async (values: any) => {
 
   try {
     const result = await service.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: process.env.SPREADSHEET_ID,
       valueInputOption: "RAW",
       requestBody,
       insertDataOption: "INSERT_ROWS",
@@ -60,7 +59,11 @@ export const writeToSheets = async (values: any) => {
   }
 };
 
-export const updateSheets = async (id: string, values: any) => {
+export const updateSheets = async (
+  id: string,
+  values: any,
+  writeValues: any
+) => {
   const auth = new GoogleAuth({
     scopes: "https://www.googleapis.com/auth/spreadsheets",
     credentials: {
@@ -73,7 +76,7 @@ export const updateSheets = async (id: string, values: any) => {
   try {
     // Step 1: Get the current sheet data to find the row index for the ID
     const sheetData = await service.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId: process.env.SPREADSHEET_ID,
       range: "Tickets!A:Z",
     });
 
@@ -90,6 +93,7 @@ export const updateSheets = async (id: string, values: any) => {
     const rowIndex = rows.findIndex((row) => row[idIndex] === id);
 
     if (rowIndex === -1) {
+      writeToSheets(writeValues);
       setLogs({
         message: "Row with the specified ID not found",
         threadId: id,
@@ -113,7 +117,7 @@ export const updateSheets = async (id: string, values: any) => {
         }`;
 
         return service.spreadsheets.values.update({
-          spreadsheetId: SPREADSHEET_ID,
+          spreadsheetId: process.env.SPREADSHEET_ID,
           range: cellRange,
           valueInputOption: "RAW",
           requestBody: {

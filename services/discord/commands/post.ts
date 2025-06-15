@@ -19,7 +19,7 @@ export const post = async (interaction: ChatInputCommandInteraction) => {
       `${roleName}, let's work together to boost our LinkedIn visibility! Please engage with our recent post by liking, sharing, and commenting. Here's our latest post: ${linkOfPost}`,
       `Hi ${roleName}, aiming to make a bigger impact on LinkedIn. Would you mind giving our recent post some love with likes, shares, and comments? Here's our latest post: ${linkOfPost}`,
     ];
-    const random = Math.floor(Math.random() * 11);
+    const random = Math.floor(Math.random() * messagesArray.length);
 
     interaction.reply({
       content: messagesArray[random],

@@ -50,7 +50,7 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
       }
     }
 
-    setLogs(JSON.stringify({ run, message }));
+    setLogs(JSON.stringify({ run, messages }));
     return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
   } catch (e) {
     setLogs(JSON.stringify(e));

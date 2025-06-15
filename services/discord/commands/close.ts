@@ -5,8 +5,8 @@ import {
 } from "discord.js";
 import setLogs from "../../logs";
 import dayjs from "dayjs";
-import { updateSheets, writeToSheets } from "../../sheet";
-import { getRatingButtons } from "../../../constants";
+import { updateSheets } from "../../sheet";
+import { getRatingButtons, resolvedTagId } from "../../../constants";
 
 export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
   const description = interaction.options.get("description")?.value?.toString();
@@ -23,8 +23,10 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
       ephemeral: true,
     });
   }
-  await interaction.deferReply({ ephemeral: false });
-
+  await interaction.reply({
+    content: "🔒 Closing ticket and updating records...",
+    ephemeral: false,
+  });
   try {
     const threadId = thread.id;
     const createdTimestamp = thread.createdTimestamp;
@@ -32,10 +34,9 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
 
     // Calculate closure time in minutes
     const closureTimeMinutes = dayjs().diff(createdTimestamp, "minute");
-    const closedAt = closedOn || dayjs().format("YYYY-MM-DD HH:MM");
+    const closedAt = closedOn || dayjs().format("YYYY-MM-DD HH:mm");
 
     // Add the "Resolved" tag if not already present
-    const resolvedTagId = "1044545382782349393"; // "Resolved" tag ID
     const currentTags = thread.appliedTags;
 
     if (!currentTags.includes(resolvedTagId)) {
@@ -49,8 +50,25 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
       Description: description || "Manually closed via command",
     };
 
+    const writeValues = [
+      [
+        threadId, //thread_id
+        new Date(), // Date
+        "", // Raised By
+        "", // Title
+        "", // Tags
+        "", // First Response
+        "", // Response time
+        closedAt, // Closed at
+        closureTimeMinutes.toString(), // Closure Time
+        description, // Description
+        "", // Post
+        "", // AI response,
+      ],
+    ];
+
     // Update the sheet
-    await updateSheets(threadId, values);
+    await updateSheets(threadId, values, writeValues);
 
     // Send confirmation message
     await interaction.editReply({
@@ -82,10 +100,12 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
   const customId = interaction.customId;
   const [, rating, threadId] = customId.split("_");
   const ratingValue = parseInt(rating);
-  const userId = interaction.user.id;
-  const userName = interaction.user.username;
-  await interaction.deferReply({ ephemeral: true });
 
+  // Custom message instead of "Bot is thinking"
+  await interaction.reply({
+    content: `⭐ Recording your rating...`,
+    ephemeral: true,
+  });
   try {
     // Store the feedback
     await storeFeedback(threadId, ratingValue);
@@ -120,7 +140,29 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
 };
 
 const storeFeedback = async (threadId: string, rating: number) => {
-  updateSheets(threadId, {
-    Rating: rating.toString(),
-  });
+  const writeValues = [
+    [
+      threadId, //thread_id
+      new Date(), // Date
+      "", // Raised By
+      "", // Title
+      "", // Tags
+      "", // First Response
+      "", // Response time
+      "", // Closed at
+      "", // Closure Time
+      "", // Description
+      "", // Post
+      "", // AI response,
+      "", // AI Feedback,
+      rating.toString(),
+    ],
+  ];
+  updateSheets(
+    threadId,
+    {
+      Rating: rating.toString(),
+    },
+    writeValues
+  );
 };

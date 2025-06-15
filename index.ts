@@ -39,7 +39,11 @@ app.post("/chat", async (req: any, res: any) => {
 });
 
 const client = new DiscordJS.Client({
-  intents: ["Guilds", "GuildMessages", GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.login(process.env.BOT_TOKEN);
@@ -50,7 +54,12 @@ client.on("ready", async () => {
 });
 
 client.on("threadCreate", async (thread) => {
-  await onThreadCreate(thread);
+  try {
+    await onThreadCreate(thread);
+  } catch (error) {
+    console.error("Handler error:", error);
+    setLogs(JSON.stringify({ error, handeler: "onThreadCreate" }));
+  }
 });
 
 client.on("threadUpdate", async (oldThread, newThread) => {
