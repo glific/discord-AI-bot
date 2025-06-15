@@ -126,8 +126,10 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
     });
 
     thread.send(
-      `<@${userId}> If you still have questions, feel free to ask the bot using the /askglific command. Our support team will reach out shortly to assist you further!
-      ${role?.toString()} team please check if this needs any further attention.`
+      `<@${userId}>` +
+        "If you still have questions, feel free to ask the bot using the `/askglific` command. Our support team will reach out shortly to assist you further!\n" +
+        `${role?.toString()}` +
+        "team please check if this needs any further attention."
     );
 
     let values = [

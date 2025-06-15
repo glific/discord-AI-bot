@@ -6,6 +6,7 @@ import DiscordJS, { GatewayIntentBits } from "discord.js";
 
 import bodyParser from "body-parser";
 
+import cors from "cors";
 import { askGlific } from "./services/discord/commands/askGlific";
 import { closeTicket, getFeedback } from "./services/discord/commands/close";
 import { post } from "./services/discord/commands/post";
@@ -21,6 +22,8 @@ import {
 } from "./services/discord/discord";
 import setLogs from "./services/logs";
 import getAnswerFromOpenAIAssistant from "./services/openai";
+
+import { resumeFlow } from "./services/metrics/resumeflow";
 dotenv.config();
 
 const app = express();
@@ -28,6 +31,7 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
+app.use(cors());
 
 app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
@@ -36,6 +40,15 @@ app.listen(PORT, () => {
 app.post("/chat", async (req: any, res: any) => {
   const user_input = req.body.user_input;
   res(getAnswerFromOpenAIAssistant(user_input));
+});
+
+app.post("/get-metrics", async (req, res) => {
+  const { startDate, endDate, contact, flowId } = req.body;
+  res.json({
+    success: true,
+  });
+
+  resumeFlow(startDate, endDate, contact, flowId);
 });
 
 const client = new DiscordJS.Client({

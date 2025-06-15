@@ -27,7 +27,7 @@ const setLogs = (error: any) => {
       },
       stream
     );
-
+    console.log(error);
     logger.error(error);
   }
 };
