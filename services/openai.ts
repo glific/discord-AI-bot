@@ -1,57 +1,35 @@
-import OpenAI from "openai";
-import { sleep } from "openai/core";
 import setLogs from "./logs";
+import axios from "axios";
 
 const getAnswerFromOpenAIAssistant = async (message: string) => {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    organization: process.env.OPENAI_ORGID,
-  });
-
-  const assistant = await openai.beta.assistants.retrieve(
-    process.env.ASSISTANT_ID || ""
-  );
-
-  const thread = await openai.beta.threads.create();
-
-  await openai.beta.threads.messages.create(thread.id, {
-    role: "user",
-    content: message,
-  });
-
   try {
-    let run = await openai.beta.threads.runs.createAndPoll(thread.id, {
-      assistant_id: assistant.id,
-    });
+    const endpoint = "https://api.openai.com/v1/responses";
 
-    while (run.status !== "completed") {
-      if (
-        [
-          "requires_action",
-          "cancelling",
-          "cancelled",
-          "failed",
-          "incomplete",
-          "expired",
-        ].includes(run.status)
-      ) {
-        setLogs(JSON.stringify(run));
+    const data = {
+      prompt: {
+        id: "pmpt_68da98832540819484bcf068281fe4dc0a07d71c30dcbfd5",
+      },
+      input: [{ role: "user", content: message }],
+    };
+
+    const config = {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+    };
+
+    const answer = await axios
+      .post(endpoint, data, config)
+      .then((response) => {
+        const answer = response.data.output.find((item: any) => item.content);
+        return answer.content[0].text;
+      })
+      .catch((error) => {
+        setLogs(JSON.stringify(error));
         return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
-      }
-      await sleep(1000);
-    }
-
-    const messages: any = await openai.beta.threads.messages.list(
-      run.thread_id
-    );
-    for (const message of messages.data.reverse()) {
-      if (message.role === "assistant") {
-        return message.content[0].text.value;
-      }
-    }
-
-    setLogs(JSON.stringify({ run, messages }));
-    return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
+      });
+    return answer;
   } catch (e) {
     setLogs(JSON.stringify(e));
     return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";

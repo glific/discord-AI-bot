@@ -37,11 +37,6 @@ app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });
 
-app.post("/chat", async (req: any, res: any) => {
-  const user_input = req.body.user_input;
-  res(getAnswerFromOpenAIAssistant(user_input));
-});
-
 app.post("/get-metrics", async (req, res) => {
   const { startDate, endDate, contact, flowId } = req.body;
   res.json({
