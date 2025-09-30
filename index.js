@@ -432,10 +432,7 @@ client.on("threadCreate", async (thread) => {
       (role) => role.name === "Glific Support"
     );
     thread.send(answer);
-    thread.send(
-      role?.toString() +
-        " team please check if this needs any further attention."
-    );
+
     let values = [
       [
         threadId,

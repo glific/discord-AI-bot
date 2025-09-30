@@ -125,11 +125,6 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
       components: [feedbackButtons],
     });
 
-    thread.send(
-      role?.toString() +
-        " team please check if this needs any further attention."
-    );
-
     let values = [
       [
         threadId,
