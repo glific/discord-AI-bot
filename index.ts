@@ -71,7 +71,7 @@ client.on("threadCreate", async (thread) => {
         await onThreadCreate(thread);
     } catch (error) {
         console.error("Handler error:", error);
-        setLogs(JSON.stringify({ error, handeler: "onThreadCreate" }));
+        setLogs(JSON.stringify({ error, handler: "onThreadCreate" }));
     }
 });
 
