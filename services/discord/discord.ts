@@ -116,7 +116,7 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
                 new ButtonBuilder()
                     .setCustomId(`need_support_${threadId}`)
                     .setEmoji("🆘")
-                    .setLabel("Need Suppport")
+                    .setLabel("Need Support")
                     .setStyle(ButtonStyle.Secondary),
             );
 
@@ -126,28 +126,22 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
             components: [feedbackButtons],
         });
 
-        thread.send(
-            role?.toString() +
-                " team please check if this needs any further attention.",
-        );
-
-        let values = [
-            [
-                threadId,
-                dayjs(createdAt).format("YYYY-MM-DD HH:mm"),
-                author,
-                title,
-                "", //tags
-                "", //First Response
-                "", //Response time
-                "", //Closed at
-                "", //Closure Time,
-                "", //Description,
-                message,
-                answer,
-            ],
-        ];
-
+    let values = [
+      [
+        threadId,
+        dayjs(createdAt).format("YYYY-MM-DD HH:mm"),
+        author,
+        title,
+        "", //tags
+        "", //First Response
+        "", //Response time
+        "", //Closed at
+        "", //Closure Time,
+        "", //Description,
+        message,
+        answer,
+      ],
+    ];
         await writeToSheets(values);
     }
 };
