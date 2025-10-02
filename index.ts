@@ -11,14 +11,14 @@ import { askGlific } from "./services/discord/commands/askGlific";
 import { closeTicket, getFeedback } from "./services/discord/commands/close";
 import { post } from "./services/discord/commands/post";
 import {
-  selectString,
-  supportMetrics,
+    selectString,
+    supportMetrics,
 } from "./services/discord/commands/supportMetrics";
 import {
-  handleAIFeedback,
-  onThreadCreate,
-  onThreadUpdate,
-  registerCommand,
+    handleAIFeedback,
+    onThreadCreate,
+    onThreadUpdate,
+    registerCommand,
 } from "./services/discord/discord";
 import setLogs from "./services/logs";
 import getAnswerFromOpenAIAssistant from "./services/openai";
@@ -34,95 +34,95 @@ app.use(express.static("public"));
 app.use(cors());
 
 app.listen(PORT, () => {
-  console.log(`Server is listening on port ${PORT}`);
+    console.log(`Server is listening on port ${PORT}`);
 });
 
 app.post("/chat", async (req: any, res: any) => {
-  const user_input = req.body.user_input;
-  res(getAnswerFromOpenAIAssistant(user_input));
+    const user_input = req.body.user_input;
+    res(getAnswerFromOpenAIAssistant(user_input));
 });
 
 app.post("/get-metrics", async (req, res) => {
-  const { startDate, endDate, contact, flowId } = req.body;
-  res.json({
-    success: true,
-  });
+    const { startDate, endDate, contact, flowId } = req.body;
+    res.json({
+        success: true,
+    });
 
-  resumeFlow(startDate, endDate, contact, flowId);
+    resumeFlow(startDate, endDate, contact, flowId);
 });
 
 const client = new DiscordJS.Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+    ],
 });
 
 client.login(process.env.BOT_TOKEN);
 
 client.on("ready", async () => {
-  registerCommand(client);
-  setLogs("Bot is ready");
+    registerCommand(client);
+    setLogs("Bot is ready");
 });
 
 client.on("threadCreate", async (thread) => {
-  try {
-    await onThreadCreate(thread);
-  } catch (error) {
-    console.error("Handler error:", error);
-    setLogs(JSON.stringify({ error, handeler: "onThreadCreate" }));
-  }
+    try {
+        await onThreadCreate(thread);
+    } catch (error) {
+        console.error("Handler error:", error);
+        setLogs(JSON.stringify({ error, handler: "onThreadCreate" }));
+    }
 });
 
 client.on("threadUpdate", async (oldThread, newThread) => {
-  await onThreadUpdate(oldThread, newThread);
+    await onThreadUpdate(oldThread, newThread);
 });
 
 let noOfDays = "0";
 
 // Event that triggers when a user interacts with a registered command
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isStringSelectMenu()) {
-    selectString(noOfDays, interaction, client);
-  }
-
-  if (interaction.isButton()) {
-    const customId = interaction.customId;
-    if (customId.startsWith("rating_")) {
-      getFeedback(interaction);
-    } else if (
-      customId.startsWith("ai_helpful_") ||
-      customId.startsWith("ai_not_helpful_")
-    ) {
-      await handleAIFeedback(interaction);
+    if (interaction.isStringSelectMenu()) {
+        selectString(noOfDays, interaction, client);
     }
-  }
 
-  if (!interaction.isCommand()) return;
-  if (!interaction.isChatInputCommand()) return;
+    if (interaction.isButton()) {
+        const customId = interaction.customId;
+        if (customId.startsWith("rating_")) {
+            getFeedback(interaction);
+        } else if (
+            customId.startsWith("query_resolved_") ||
+            customId.startsWith("need_support_")
+        ) {
+            await handleAIFeedback(interaction);
+        }
+    }
 
-  switch (interaction.commandName) {
-    case "askglific":
-      // Join the arguments to form the user's question
-      await askGlific(interaction);
-      break;
-    case "post":
-      // Join the arguments to form the user's question
-      await post(interaction);
-      break;
+    if (!interaction.isCommand()) return;
+    if (!interaction.isChatInputCommand()) return;
 
-    case "close-ticket":
-      await closeTicket(interaction);
-      break;
+    switch (interaction.commandName) {
+        case "askglific":
+            // Join the arguments to form the user's question
+            await askGlific(interaction);
+            break;
+        case "post":
+            // Join the arguments to form the user's question
+            await post(interaction);
+            break;
 
-    case "support-metrics":
-      // Join the arguments to form the user's question
-      await supportMetrics(noOfDays, interaction, client);
-      break;
+        case "close-ticket":
+            await closeTicket(interaction);
+            break;
 
-    default:
-      setLogs("Unknown command: " + interaction.commandName);
-      break;
-  }
+        case "support-metrics":
+            // Join the arguments to form the user's question
+            await supportMetrics(noOfDays, interaction, client);
+            break;
+
+        default:
+            setLogs("Unknown command: " + interaction.commandName);
+            break;
+    }
 });
