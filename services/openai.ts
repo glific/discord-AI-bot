@@ -7,7 +7,7 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
 
     const data = {
       prompt: {
-        id: "pmpt_68da98832540819484bcf068281fe4dc0a07d71c30dcbfd5",
+        id: process.env.OPENAI_PROMPT_ID,
       },
       input: [{ role: "user", content: message }],
     };
@@ -19,17 +19,14 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
       },
     };
 
-    const answer = await axios
-      .post(endpoint, data, config)
-      .then((response) => {
-        const answer = response.data.output.find((item: any) => item.content);
-        return answer.content[0].text;
-      })
-      .catch((error) => {
-        setLogs(JSON.stringify(error));
-        return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
-      });
-    return answer;
+    const response = await axios.post(endpoint, data, config);
+    const answer = await response.data.output.find((item: any) => item.content)
+      .content[0].text;
+
+    return (
+      answer ||
+      "Sorry, I am not able to answer this question. Please try again later."
+    );
   } catch (e) {
     setLogs(JSON.stringify(e));
     return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
