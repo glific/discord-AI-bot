@@ -8,6 +8,63 @@ import dayjs from "dayjs";
 import { updateSheets } from "../../sheet";
 import { getRatingButtons, resolvedTagId } from "../../../constants";
 
+// This function is extracted to be reusable across different interaction types:
+// - Can be called with ChatInputCommandInteraction and ButtonInteraction
+export const closeTicketLogic = async (
+  thread: ThreadChannel,
+  description?: string,
+  closedOn?: string,
+  userId?: string
+) => {
+  const threadId = thread.id;
+  const createdTimestamp = thread.createdTimestamp;
+  const userMention = userId ? `<@${userId}>` : `<@${thread?.ownerId}>`;
+
+  // Calculate closure time in minutes
+  const closureTimeMinutes = dayjs().diff(createdTimestamp, "minute");
+  const closedAt = closedOn || dayjs().format("YYYY-MM-DD HH:mm");
+
+  // Add the "Resolved" tag if not already present
+  const currentTags = thread.appliedTags;
+
+  if (!currentTags.includes(resolvedTagId)) {
+    await thread.setAppliedTags([...currentTags, resolvedTagId]);
+  }
+
+  // Prepare values for sheet update
+  const values: any = {
+    "Closure Time": closureTimeMinutes.toString(),
+    "Closed at": closedAt,
+    Description: description || "Closed via AI feedback - Query resolved",
+  };
+
+  const writeValues = [
+    [
+      threadId, //thread_id
+      new Date(), // Date
+      "", // Raised By
+      "", // Title
+      "", // Tags
+      "", // First Response
+      "", // Response time
+      closedAt, // Closed at
+      closureTimeMinutes.toString(), // Closure Time
+      description || "Manually closed via command",
+      "", // Post
+      "", // AI response,
+    ],
+  ];
+
+  // Update the sheet
+  await updateSheets(threadId, values, writeValues);
+
+  // Send rating request message
+  await thread.send({
+    content: `**Please leave a quick rating to help us improve:**`,
+    components: [getRatingButtons(threadId)],
+  });
+};
+
 export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
   const description = interaction.options.get("description")?.value?.toString();
   const closedOn = interaction.options.get("closed-on")?.value?.toString();
@@ -15,70 +72,27 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
 
   // Check if the command is being used in a thread
   if (
-    !interaction.channel?.isThread() &&
+    !interaction.channel?.isThread() ||
     thread.parentId !== process.env.CHANNEL_ID
   ) {
-    interaction.reply({
+    await interaction.reply({
       content: "This command can only be used in a support thread!",
       ephemeral: true,
     });
+    return;
   }
+
   await interaction.reply({
     content: "🔒 Closing ticket and updating records...",
     ephemeral: false,
   });
+
   try {
-    const threadId = thread.id;
-    const createdTimestamp = thread.createdTimestamp;
-    const userMention = `<@${thread?.ownerId}>`;
-
-    // Calculate closure time in minutes
-    const closureTimeMinutes = dayjs().diff(createdTimestamp, "minute");
-    const closedAt = closedOn || dayjs().format("YYYY-MM-DD HH:mm");
-
-    // Add the "Resolved" tag if not already present
-    const currentTags = thread.appliedTags;
-
-    if (!currentTags.includes(resolvedTagId)) {
-      await thread.setAppliedTags([...currentTags, resolvedTagId]);
-    }
-
-    // Prepare values for sheet update
-    const values: any = {
-      "Closure Time": closureTimeMinutes.toString(),
-      "Closed at": closedAt,
-      Description: description || "Manually closed via command",
-    };
-
-    const writeValues = [
-      [
-        threadId, //thread_id
-        new Date(), // Date
-        "", // Raised By
-        "", // Title
-        "", // Tags
-        "", // First Response
-        "", // Response time
-        closedAt, // Closed at
-        closureTimeMinutes.toString(), // Closure Time
-        description, // Description
-        "", // Post
-        "", // AI response,
-      ],
-    ];
-
-    // Update the sheet
-    await updateSheets(threadId, values, writeValues);
+    await closeTicketLogic(thread, description, closedOn);
 
     // Send confirmation message
     await interaction.editReply({
       content: `✅ Ticket closed successfully!`,
-    });
-
-    // Send rating request message
-    await thread.send({
-      content: `${userMention} **Please rate your support experience:**`,
-      components: [getRatingButtons(threadId)],
     });
   } catch (error) {
     console.error("Error closing ticket:", error);
@@ -88,10 +102,9 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
       threadId: thread.id,
     });
 
-    interaction.reply({
+    await interaction.editReply({
       content:
         "❌ An error occurred while closing the ticket. Please try again.",
-      ephemeral: true,
     });
   }
 };

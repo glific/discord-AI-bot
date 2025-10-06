@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import { updateSheets, writeToSheets } from "../sheet";
 import setLogs from "../logs";
 import { resolvedTagId, tagIds } from "../../constants";
+import { closeTicketLogic } from "./commands/close";
 
 export async function registerCommand(client: Client) {
   try {
@@ -108,27 +109,22 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
     // Create feedback buttons for AI response
     const feedbackButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(`ai_helpful_${threadId}`)
-        .setEmoji("👍")
-        .setLabel("Helpful")
+        .setCustomId(`query_resolved_${threadId}`)
+        .setEmoji("✅")
+        .setLabel("Query Resolved")
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
-        .setCustomId(`ai_not_helpful_${threadId}`)
-        .setEmoji("👎")
-        .setLabel("Not Helpful")
+        .setCustomId(`need_support_${threadId}`)
+        .setEmoji("🆘")
+        .setLabel("Need Support")
         .setStyle(ButtonStyle.Secondary)
     );
 
     // Send AI response with feedback buttons
     await thread.send({
-      content: answer,
+      content: `${answer}\n\n**Was this helpful in resolving your query? Or do you need further support?**`,
       components: [feedbackButtons],
     });
-
-    thread.send(
-      role?.toString() +
-        " team please check if this needs any further attention."
-    );
 
     let values = [
       [
@@ -146,7 +142,6 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
         answer,
       ],
     ];
-
     await writeToSheets(values);
   }
 };
@@ -198,13 +193,11 @@ export const onThreadUpdate = async (
 
 export const handleAIFeedback = async (interaction: ButtonInteraction) => {
   const customId = interaction.customId;
-
   const thread = interaction.channel as ThreadChannel;
-  const threadId = customId.split("_").pop();
-  const isHelpful = customId.startsWith("ai_helpful_");
-  const isNotHelpFul = customId.startsWith("ai_not_helpful_");
+  const threadId = customId.split("_").slice(-1)[0];
+  const queryResolved = customId.startsWith("query_resolved_");
+  const needSupport = customId.startsWith("need_support_");
 
-  // Custom message instead of "Bot is thinking"
   await interaction.reply({
     content: `Recording your feedback...`,
     ephemeral: true,
@@ -215,7 +208,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       [
         threadId, //thread_id
         dayjs(thread.createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-        "", // Raised By
+        interaction.user.username,
         "", // Title
         "", // Tags
         "", // First Response
@@ -225,7 +218,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
         "", // Description
         "", // Post
         "", // AI response,
-        `${(isHelpful && "Yes") || (isNotHelpFul && "No") || "No response"}`, // AI Feedback,
+        `${(queryResolved && "Yes") || (needSupport && "No") || "No response"}`, // AI Feedback,
         "", // Rating
       ],
     ];
@@ -235,19 +228,37 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
         threadId,
         {
           "AI Feedback": `${
-            (isHelpful && "Yes") || (isNotHelpFul && "No") || "No response"
+            (queryResolved && "Yes") || (needSupport && "No") || "No response"
           }`,
         },
         writeValues
       );
     }
 
-    // Acknowledge the feedback
-    await interaction.editReply({
-      content: `Thank you for your feedback! You marked the AI response as ${
-        isHelpful ? "helpful" : "not helpful"
-      } 👍`,
-    });
+    if (queryResolved) {
+      await interaction.editReply({
+        content: `Thanks for your feedback! Query marked as resolved ✅`,
+      });
+
+      await thread.send(
+        `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf anything changes, just reply here to reopen.`
+      );
+
+      // close the ticket when query is resolved
+      await closeTicketLogic(
+        thread,
+        "Closed via AI feedback - Query resolved",
+        dayjs().format("YYYY-MM-DD HH:mm"),
+        interaction.user.id
+      );
+    } else if (needSupport) {
+      const role = thread.guild.roles.cache.find(
+        (role) => role.name === "Glific Support"
+      );
+      await thread.send(
+        `Thanks for letting us know! ${role?.toString()} has been notified and will assist you shortly.`
+      );
+    }
 
     // Update the original message to show feedback received
     await interaction.message.edit({
@@ -261,7 +272,6 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       error: error,
       threadId: threadId!,
     });
-
     await interaction.editReply({
       content:
         "❌ There was an error recording your feedback. Please try again.",

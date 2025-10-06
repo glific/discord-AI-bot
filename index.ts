@@ -66,7 +66,7 @@ client.on("threadCreate", async (thread) => {
     await onThreadCreate(thread);
   } catch (error) {
     console.error("Handler error:", error);
-    setLogs(JSON.stringify({ error, handeler: "onThreadCreate" }));
+    setLogs(JSON.stringify({ error, handler: "onThreadCreate" }));
   }
 });
 
@@ -87,8 +87,8 @@ client.on("interactionCreate", async (interaction) => {
     if (customId.startsWith("rating_")) {
       getFeedback(interaction);
     } else if (
-      customId.startsWith("ai_helpful_") ||
-      customId.startsWith("ai_not_helpful_")
+      customId.startsWith("query_resolved_") ||
+      customId.startsWith("need_support_")
     ) {
       await handleAIFeedback(interaction);
     }
