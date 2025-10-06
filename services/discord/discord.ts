@@ -122,7 +122,7 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
 
         // Send AI response with feedback buttons
         await thread.send({
-            content: answer,
+            content: `${answer}\n\n**Was this helpful in resolving your query? Or do you need further support?**`,
             components: [feedbackButtons],
         });
 
@@ -195,7 +195,6 @@ export const onThreadUpdate = async (
 
 export const handleAIFeedback = async (interaction: ButtonInteraction) => {
     const customId = interaction.customId;
-
     const thread = interaction.channel as ThreadChannel;
     const threadId = customId.split("_").slice(-1)[0];
     const queryResolved = customId.startsWith("query_resolved_");
@@ -212,7 +211,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             [
                 threadId, //thread_id
                 dayjs(thread.createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-                "", // Raised By
+                interaction.user.username,
                 "", // Title
                 "", // Tags
                 "", // First Response
@@ -245,6 +244,9 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             await interaction.editReply({
                 content: `Thanks for your feedback! Query marked as resolved ✅`,
             });
+            await thread.send(
+                `Great, thanks <@${interaction.user.id}>, I'll close this ticket now.\nIf anything changes, just reply here to reopen.\nPlease leave a quick rating to help us improve.`,
+            );
         } else if (needSupport) {
             const role = thread.guild.roles.cache.find(
                 (role) => role.name === "Glific Support",
@@ -252,6 +254,9 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             await interaction.editReply({
                 content: `Thanks for your feedback! ${role?.toString()} has been notified.`,
             });
+            await thread.send(
+                `${role?.toString()} team, <@${interaction.user.id}> needs additional support. Please assist.`,
+            );
         }
 
         // Update the original message to show feedback received
@@ -266,7 +271,6 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             error: error,
             threadId: threadId!,
         });
-
         await interaction.editReply({
             content:
                 "❌ There was an error recording your feedback. Please try again.",
