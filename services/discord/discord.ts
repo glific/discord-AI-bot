@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import { updateSheets, writeToSheets } from "../sheet";
 import setLogs from "../logs";
 import { resolvedTagId, tagIds } from "../../constants";
+import { closeTicketLogic } from "./commands/close";
 
 export async function registerCommand(client: Client) {
     try {
@@ -126,22 +127,22 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
             components: [feedbackButtons],
         });
 
-    let values = [
-      [
-        threadId,
-        dayjs(createdAt).format("YYYY-MM-DD HH:mm"),
-        author,
-        title,
-        "", //tags
-        "", //First Response
-        "", //Response time
-        "", //Closed at
-        "", //Closure Time,
-        "", //Description,
-        message,
-        answer,
-      ],
-    ];
+        let values = [
+            [
+                threadId,
+                dayjs(createdAt).format("YYYY-MM-DD HH:mm"),
+                author,
+                title,
+                "", //tags
+                "", //First Response
+                "", //Response time
+                "", //Closed at
+                "", //Closure Time,
+                "", //Description,
+                message,
+                answer,
+            ],
+        ];
         await writeToSheets(values);
     }
 };
@@ -200,7 +201,6 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
     const queryResolved = customId.startsWith("query_resolved_");
     const needSupport = customId.startsWith("need_support_");
 
-    // Custom message instead of "Bot is thinking"
     await interaction.reply({
         content: `Recording your feedback...`,
         ephemeral: true,
@@ -225,6 +225,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
                 "", // Rating
             ],
         ];
+
         if (threadId) {
             await updateSheets(
                 threadId,
@@ -239,20 +240,29 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             );
         }
 
-        // Acknowledge the feedback
         if (queryResolved) {
             await interaction.editReply({
                 content: `Thanks for your feedback! Query marked as resolved ✅`,
             });
+
             await thread.send(
-                `Great, thanks <@${interaction.user.id}>, I'll close this ticket now.\nIf anything changes, just reply here to reopen.\nPlease leave a quick rating to help us improve.`,
+                `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf anything changes, just reply here to reopen.\nPlease leave a quick rating to help us improve.`,
+            );
+
+            // close the ticket when query is resolved
+            await closeTicketLogic(
+                thread,
+                "Closed via AI feedback - Query resolved",
+                undefined,
+                interaction.user.id,
             );
         } else if (needSupport) {
             const role = thread.guild.roles.cache.find(
                 (role) => role.name === "Glific Support",
             );
+
             await interaction.editReply({
-                content: `Thanks for your feedback! ${role?.toString()} has been notified.`,
+                content: `Thanks for the heads-up, ${role?.toString()} could you take a look?`,
             });
         }
 
