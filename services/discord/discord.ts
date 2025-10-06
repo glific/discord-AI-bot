@@ -254,9 +254,6 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             await interaction.editReply({
                 content: `Thanks for your feedback! ${role?.toString()} has been notified.`,
             });
-            await thread.send(
-                `${role?.toString()} team, <@${interaction.user.id}> needs additional support. Please assist.`,
-            );
         }
 
         // Update the original message to show feedback received
