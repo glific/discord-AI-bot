@@ -253,17 +253,16 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             await closeTicketLogic(
                 thread,
                 "Closed via AI feedback - Query resolved",
-                undefined,
+                dayjs().format("YYYY-MM-DD HH:mm"),
                 interaction.user.id,
             );
         } else if (needSupport) {
             const role = thread.guild.roles.cache.find(
                 (role) => role.name === "Glific Support",
             );
-
-            await interaction.editReply({
-                content: `Thanks for the heads-up, ${role?.toString()} could you take a look?`,
-            });
+            await thread.send(
+                `Thanks for letting us know! ${role?.toString()} has been notified and will assist you shortly.`,
+            );
         }
 
         // Update the original message to show feedback received

@@ -49,7 +49,7 @@ export const closeTicketLogic = async (
             "", // Response time
             closedAt, // Closed at
             closureTimeMinutes.toString(), // Closure Time
-            description || "Closed via AI feedback - Query resolved", // Description
+            description || "Manually closed via command",
             "", // Post
             "", // AI response,
         ],
