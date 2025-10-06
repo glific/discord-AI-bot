@@ -60,7 +60,7 @@ export const closeTicketLogic = async (
 
     // Send rating request message
     await thread.send({
-        content: `**Please rate your support experience:**`,
+        content: `**Please leave a quick rating to help us improve:**`,
         components: [getRatingButtons(threadId)],
     });
 };

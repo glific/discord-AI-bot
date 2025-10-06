@@ -246,7 +246,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             });
 
             await thread.send(
-                `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf anything changes, just reply here to reopen.\nPlease leave a quick rating to help us improve.`,
+                `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf anything changes, just reply here to reopen.`,
             );
 
             // close the ticket when query is resolved
