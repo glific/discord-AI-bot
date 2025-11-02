@@ -122,7 +122,12 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
 
     // Send AI response with feedback buttons
     await thread.send({
-      content: `${answer}\n\n**Was this helpful in resolving your query? Or do you need further support?**`,
+      content: `${answer}`,
+    });
+
+    await thread.send({
+      content:
+        "Was this helpful in resolving your query? Or do you need further support?",
       components: [feedbackButtons],
     });
 
@@ -241,7 +246,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       });
 
       await thread.send(
-        `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf anything changes, just reply here to reopen.`
+        `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf you need further assistance with this, reply here to reopen.`
       );
 
       // close the ticket when query is resolved
