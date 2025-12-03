@@ -151,7 +151,6 @@ export const onThreadUpdate = async (
   oldThread: ThreadChannel,
   newThread: ThreadChannel
 ) => {
-  console.log("Thread updated:", newThread.id);
   if (
     newThread.parent?.type === ChannelType.GuildForum &&
     newThread.parentId === process.env.CHANNEL_ID
