@@ -2,35 +2,23 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ChannelType,
+  Client,
+  ForumChannel,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
 
-export const tagIds = [
-  { id: "1037985352536830013", name: "Knowledge Gap" },
-  { id: "1037985383465627679", name: "Bug" },
-  { id: "1037985445172215839", name: "New Feature" },
-  { id: "1044545382782349393", name: "Resolved" },
-  { id: "1044546639513276416", name: "Documentation update" },
-  { id: "1052438915778363422", name: "No Response" },
-  { id: "1052458635298619474", name: "Priority 1" },
-  { id: "1052798794221240321", name: "Priority 2" },
-  { id: "1057180917623435295", name: "Priority 3" },
-  { id: "1057181111920369674", name: "Priority 4" },
-  { id: "1206900864086974504", name: "In Process" },
-  { id: "1207181596482871336", name: "Pending from Org" },
-  { id: "1213041779310469180", name: "Bug at Meta's End" },
-  { id: "1213042817652232222", name: "Task" },
-  { id: "1240173333597917224", name: "Not Replicable" },
-  { id: "1269832617830777016", name: "Nov" },
-  { id: "1271417466555338847", name: "Resources" },
-  { id: "1271417514110357525", name: "Closed" },
-  { id: "1280027263685099604", name: "Sept" },
-  { id: "1290533381821567030", name: "Oct" },
-];
+export const getForumTags = (client: Client) => {
+  const forumChannel = client.channels.cache.get(process.env.CHANNEL_ID || "");
 
-export const resolvedTagId = "1044545382782349393";
+  if (forumChannel && forumChannel.type === ChannelType.GuildForum) {
+    return (forumChannel as ForumChannel).availableTags;
+  }
+
+  return [];
+};
 
 export const getRatingButtons = (threadId: string) => {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

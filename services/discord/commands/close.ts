@@ -6,7 +6,7 @@ import {
 import setLogs from "../../logs";
 import dayjs from "dayjs";
 import { updateSheets } from "../../sheet";
-import { getRatingButtons, resolvedTagId } from "../../../constants";
+import { getForumTags, getRatingButtons } from "../../../constants";
 
 // This function is extracted to be reusable across different interaction types:
 // - Can be called with ChatInputCommandInteraction and ButtonInteraction
@@ -27,8 +27,12 @@ export const closeTicketLogic = async (
   // Add the "Resolved" tag if not already present
   const currentTags = thread.appliedTags;
 
-  if (!currentTags.includes(resolvedTagId)) {
-    await thread.setAppliedTags([...currentTags, resolvedTagId]);
+  const tags = getForumTags(thread.client);
+
+  const resolvedTag = tags.find((tag) => tag.name === "Resolved");
+
+  if (resolvedTag && !currentTags.includes(resolvedTag.id)) {
+    await thread.setAppliedTags([...currentTags, resolvedTag.id]);
   }
 
   // Prepare values for sheet update
