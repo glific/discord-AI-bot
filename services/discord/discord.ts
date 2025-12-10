@@ -12,7 +12,7 @@ import getAnswerFromOpenAIAssistant from "../openai";
 import dayjs from "dayjs";
 import { updateSheets, writeToSheets } from "../sheet";
 import setLogs from "../logs";
-import { resolvedTagId, tagIds } from "../../constants";
+import { getForumTags } from "../../constants";
 import { closeTicketLogic } from "./commands/close";
 
 export async function registerCommand(client: Client) {
@@ -96,15 +96,11 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
     const title = thread.name;
     const message = firstMessage?.content ?? "";
     const author = firstMessage?.author.username ?? "";
-    const userId = firstMessage?.author.id ?? "";
     const createdAt = firstMessage?.createdTimestamp;
 
     thread.sendTyping();
 
     const answer = await getAnswerFromOpenAIAssistant(message);
-    const role = thread.guild.roles.cache.find(
-      (role) => role.name === "Glific Support"
-    );
 
     // Create feedback buttons for AI response
     const feedbackButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -171,11 +167,15 @@ export const onThreadUpdate = async (
     const threadId = newThread.id;
     const appliedTagsIds = newThread.appliedTags;
 
+    const tags = getForumTags(newThread.client);
+
     const appliedTagsNames = appliedTagsIds
-      .map((id) => tagIds.find((tag) => tag.id === id)?.name)
+      .map((id) => tags.find((tag) => tag.id === id)?.name)
       .filter(Boolean);
 
-    if (removedTags.includes(resolvedTagId)) {
+    const resolvedTag = tags.find((tag) => tag.name === "Resolved");
+
+    if (removedTags.includes(resolvedTag?.id || "")) {
       closureTime = "";
       closedAt = "";
     }
