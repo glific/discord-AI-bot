@@ -175,13 +175,20 @@ export const onThreadUpdate = async (
 
     const resolvedTag = tags.find((tag) => tag.name === "Resolved");
 
-    if (removedTags.includes(resolvedTag?.id || "")) {
+    if (resolvedTag && appliedTagsIds.includes(resolvedTag?.id)) {
+      closureTime = dayjs().diff(createdTimestamp, "minute").toString();
+      closedAt = dayjs().format("YYYY-MM-DD HH:mm");
+    }
+
+    if (resolvedTag && removedTags.includes(resolvedTag?.id)) {
       closureTime = "";
       closedAt = "";
     }
 
     let values: any = {
       Tags: appliedTagsNames.join(", "),
+      "Closed at": closedAt,
+      "Closure Time": closureTime,
     };
 
     if (oldTags.length === 0 && newTags.length > 0) {
