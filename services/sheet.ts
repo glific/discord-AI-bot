@@ -20,7 +20,7 @@ export const testSheetsAccess = async () => {
     });
     console.log(
       "✅ Spreadsheet access successful:",
-      response.data.properties?.title
+      response.data.properties?.title,
     );
     return true;
   } catch (error) {
@@ -47,7 +47,7 @@ export const writeToSheets = async (values: any) => {
   try {
     const result = await service.spreadsheets.values.append({
       spreadsheetId: process.env.SPREADSHEET_ID,
-      valueInputOption: "RAW",
+      valueInputOption: "USER_ENTERED",
       requestBody,
       insertDataOption: "INSERT_ROWS",
       range: "Tickets!A1",
@@ -62,7 +62,7 @@ export const writeToSheets = async (values: any) => {
 export const updateSheets = async (
   id: string,
   values: any,
-  writeValues: any
+  writeValues: any,
 ) => {
   const auth = new GoogleAuth({
     scopes: "https://www.googleapis.com/auth/spreadsheets",
@@ -124,7 +124,7 @@ export const updateSheets = async (
             values: [[newValue]],
           },
         });
-      }
+      },
     );
 
     const results = await Promise.all(updatePromises);

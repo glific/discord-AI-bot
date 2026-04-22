@@ -74,7 +74,7 @@ export async function registerCommand(client: Client) {
         ],
       });
       console.log(
-        `Registered commands: ${command.name}, ${closeTicketCommand.name}, ${postCommand.name}, ${supportMetrics.name}`
+        `Registered commands: ${command.name}, ${closeTicketCommand.name}, ${postCommand.name}, ${supportMetrics.name}`,
       );
     }
   } catch (error) {
@@ -113,7 +113,7 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
         .setCustomId(`need_support_${threadId}`)
         .setEmoji("🆘")
         .setLabel("Need Support")
-        .setStyle(ButtonStyle.Secondary)
+        .setStyle(ButtonStyle.Secondary),
     );
 
     // Send AI response with feedback buttons
@@ -149,7 +149,7 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
 
 export const onThreadUpdate = async (
   oldThread: ThreadChannel,
-  newThread: ThreadChannel
+  newThread: ThreadChannel,
 ) => {
   if (
     newThread.parent?.type === ChannelType.GuildForum &&
@@ -243,7 +243,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
             (queryResolved && "Yes") || (needSupport && "No") || "No response"
           }`,
         },
-        writeValues
+        writeValues,
       );
     }
 
@@ -253,7 +253,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       });
 
       await thread.send(
-        `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf you need further assistance with this, reply here to reopen.`
+        `Great, thanks <@${interaction.user.id}>! I'll close this ticket now.\nIf you need further assistance with this, reply here to reopen.`,
       );
 
       // close the ticket when query is resolved
@@ -261,14 +261,14 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
         thread,
         "Closed via AI feedback - Query resolved",
         dayjs().format("YYYY-MM-DD HH:mm"),
-        interaction.user.id
+        interaction.user.id,
       );
     } else if (needSupport) {
       const role = thread.guild.roles.cache.find(
-        (role) => role.name === "Glific Support"
+        (role) => role.name === "Glific Support",
       );
       await thread.send(
-        `Thanks for letting us know! ${role?.toString()} has been notified and will assist you shortly.`
+        `Thanks for letting us know! ${role?.toString()} has been notified and will assist you shortly.`,
       );
     }
 
