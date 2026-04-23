@@ -14,8 +14,9 @@ export const closeTicketLogic = async (
   thread: ThreadChannel,
   description?: string,
   closedOn?: string,
-  userId?: string
+  userId?: string,
 ) => {
+  const firstMessage = await thread.fetchStarterMessage();
   const threadId = thread.id;
   const createdTimestamp = thread.createdTimestamp;
   const userMention = userId ? `<@${userId}>` : `<@${thread?.ownerId}>`;
@@ -34,7 +35,6 @@ export const closeTicketLogic = async (
   if (resolvedTag && !currentTags.includes(resolvedTag.id)) {
     await thread.setAppliedTags([...currentTags, resolvedTag.id]);
   }
-
   // Prepare values for sheet update
   const values: any = {
     "Closure Time": closureTimeMinutes.toString(),
@@ -45,9 +45,9 @@ export const closeTicketLogic = async (
   const writeValues = [
     [
       threadId, //thread_id
-      new Date(), // Date
-      "", // Raised By
-      "", // Title
+      dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
+      firstMessage?.author.username, // Raised By
+      thread.name, // Title
       "", // Tags
       "", // First Response
       "", // Response time
@@ -117,6 +117,7 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
   const customId = interaction.customId;
   const [, rating, threadId] = customId.split("_");
   const ratingValue = parseInt(rating);
+  const thread = interaction.channel as ThreadChannel;
 
   // Custom message instead of "Bot is thinking"
   await interaction.reply({
@@ -125,7 +126,7 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
   });
   try {
     // Store the feedback
-    await storeFeedback(threadId, ratingValue);
+    await storeFeedback(thread, ratingValue, thread.createdTimestamp);
 
     // Acknowledge the rating using editReply
     await interaction.editReply({
@@ -156,13 +157,18 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
   return;
 };
 
-const storeFeedback = async (threadId: string, rating: number) => {
+const storeFeedback = async (
+  thread: ThreadChannel,
+  rating: number,
+  createdTimestamp: number | null,
+) => {
+  const firstMessage = await thread.fetchStarterMessage();
   const writeValues = [
     [
-      threadId, //thread_id
-      new Date(), // Date
-      "", // Raised By
-      "", // Title
+      thread.id, //thread_id
+      dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
+      firstMessage?.author.username, // Raised By
+      thread.name, // Title
       "", // Tags
       "", // First Response
       "", // Response time
@@ -176,10 +182,10 @@ const storeFeedback = async (threadId: string, rating: number) => {
     ],
   ];
   updateSheets(
-    threadId,
+    thread.id,
     {
       Rating: rating.toString(),
     },
-    writeValues
+    writeValues,
   );
 };

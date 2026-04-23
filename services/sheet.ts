@@ -119,7 +119,7 @@ export const updateSheets = async (
         return service.spreadsheets.values.update({
           spreadsheetId: process.env.SPREADSHEET_ID,
           range: cellRange,
-          valueInputOption: "RAW",
+          valueInputOption: "USER_ENTERED",
           requestBody: {
             values: [[newValue]],
           },
