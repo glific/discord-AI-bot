@@ -1,5 +1,6 @@
 import { ChatInputCommandInteraction, Interaction } from "discord.js";
 import getAnswerFromOpenAIAssistant from "../../openai";
+import { splitMessage } from "../discord";
 
 export const askGlific = async (interaction: ChatInputCommandInteraction) => {
   const question = interaction.options.get("question")?.value?.toString();
@@ -10,7 +11,9 @@ export const askGlific = async (interaction: ChatInputCommandInteraction) => {
     });
 
     const answer = await getAnswerFromOpenAIAssistant(question);
-    await interaction.followUp(answer);
+    for (const chunk of splitMessage(answer)) {
+      await interaction.followUp(chunk);
+    }
   } else {
     interaction.reply("Unable to answer the query");
   }

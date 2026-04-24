@@ -15,6 +15,30 @@ import setLogs from "../logs";
 import { getForumTags } from "../../constants";
 import { closeTicketLogic } from "./commands/close";
 
+const DISCORD_MAX_CONTENT = 2000;
+
+export const splitMessage = (
+  content: string,
+  maxLength = DISCORD_MAX_CONTENT,
+): string[] => {
+  if (content.length <= maxLength) return [content];
+
+  const chunks: string[] = [];
+  let remaining = content;
+
+  while (remaining.length > maxLength) {
+    let splitIdx = remaining.lastIndexOf("\n", maxLength);
+    if (splitIdx <= 0) splitIdx = remaining.lastIndexOf(" ", maxLength);
+    if (splitIdx <= 0) splitIdx = maxLength;
+
+    chunks.push(remaining.slice(0, splitIdx));
+    remaining = remaining.slice(splitIdx).trimStart();
+  }
+
+  if (remaining.length) chunks.push(remaining);
+  return chunks;
+};
+
 export async function registerCommand(client: Client) {
   try {
     // Fetch the guild (server) where the bot is connected
@@ -117,9 +141,9 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
     );
 
     // Send AI response with feedback buttons
-    await thread.send({
-      content: `${answer}`,
-    });
+    for (const chunk of splitMessage(answer)) {
+      await thread.send({ content: chunk });
+    }
 
     await thread.send({
       content:
