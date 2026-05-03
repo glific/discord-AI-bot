@@ -14,6 +14,7 @@ import { updateSheets, writeToSheets } from "../sheet";
 import setLogs from "../logs";
 import { getForumTags } from "../../constants";
 import { closeTicketLogic } from "./commands/close";
+import { createGitHubIssueFromThread } from "../github";
 
 const DISCORD_MAX_CONTENT = 2000;
 
@@ -186,6 +187,7 @@ export const onThreadUpdate = async (
     const newTags = newThread.appliedTags;
 
     const removedTags = oldTags.filter((tag) => !newTags.includes(tag));
+    const addedTags = newTags.filter((tag) => !oldTags.includes(tag));
 
     const createdTimestamp = newThread.createdTimestamp;
     const threadId = newThread.id;
@@ -224,6 +226,11 @@ export const onThreadUpdate = async (
     }
 
     await updateSheets(threadId, values, []);
+
+    const devTag = tags.find((tag) => tag.name === "Dev");
+    if (devTag && addedTags.includes(devTag.id)) {
+      await createGitHubIssueFromThread(newThread);
+    }
   }
 };
 
