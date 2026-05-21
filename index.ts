@@ -116,7 +116,7 @@ client.on("interactionCreate", async (interaction) => {
       await supportMetrics(noOfDays, interaction, client);
       break;
 
-    default:
+        default:
       setLogs("Unknown command: " + interaction.commandName);
       break;
   }

@@ -99,7 +99,7 @@ export async function registerCommand(client: Client) {
         ],
       });
       console.log(
-        `Registered commands: ${command.name}, ${closeTicketCommand.name}, ${postCommand.name}, ${supportMetrics.name}`,
+        `Registered commands: ${command.name}, ${closeTicketCommand.name}, ${postCommand.name}, ${supportMetrics.name},`,
       );
     }
   } catch (error) {
@@ -182,6 +182,8 @@ export const onThreadUpdate = async (
   ) {
     let closureTime = "";
     let closedAt = "";
+    let firstResponse = "";
+    let responseTime = "";
 
     const oldTags = oldThread.appliedTags;
     const newTags = newThread.appliedTags;
@@ -218,14 +220,34 @@ export const onThreadUpdate = async (
     };
 
     if (oldTags.length === 0 && newTags.length > 0) {
+      firstResponse = dayjs().format("YYYY-MM-DD HH:mm");
+      responseTime = dayjs().diff(createdTimestamp, "minute").toString();
       values = {
         ...values,
-        "First Response": dayjs().format("YYYY-MM-DD HH:mm"),
-        "Response time": dayjs().diff(createdTimestamp, "minute").toString(),
+        "First Response": firstResponse,
+        "Response time": responseTime,
       };
     }
 
-    await updateSheets(threadId, values, []);
+    const firstMessage = await newThread.fetchStarterMessage();
+    const writeValues = [
+      [
+        threadId, // thread_id
+        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
+        firstMessage?.author.username, // Raised By
+        newThread.name, // Title
+        appliedTagsNames.join(", "), // Tags
+        firstResponse, // First Response
+        responseTime, // Response time
+        closedAt, // Closed at
+        closureTime, // Closure Time
+        "", // Description
+        "", // Post
+        "", // AI response
+      ],
+    ];
+
+    await updateSheets(threadId, values, writeValues);
 
     const devTag = tags.find((tag) => tag.name === "Dev");
     if (devTag && addedTags.includes(devTag.id)) {
