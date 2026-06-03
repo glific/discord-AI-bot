@@ -21,15 +21,23 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
     };
 
     const response = await axios.post(endpoint, data, config);
-    const answer = await response.data.output.find((item: any) => item.content)
-      .content[0].text;
+    const outputItem = response.data.output?.find(
+      (item: any) => item.type === "message" && item.content?.length > 0
+    );
+    const answer = outputItem?.content?.[0]?.text;
 
     return (
       answer ||
       "Sorry, I am not able to answer this question. Please try again later."
     );
-  } catch (e) {
-    setLogs(JSON.stringify(e));
+  } catch (e: any) {
+    const errorDetail = {
+      message: e?.message,
+      code: e?.code,
+      status: e?.response?.status,
+      data: e?.response?.data,
+    };
+    setLogs(JSON.stringify({ error: "OpenAI call failed", ...errorDetail }));
     return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
   }
 };
