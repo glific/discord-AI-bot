@@ -56,6 +56,10 @@ const client = new DiscordJS.Client({
 
 client.login(process.env.BOT_TOKEN);
 
+client.on("error", (error) => {
+  setLogs(JSON.stringify({ message: "Discord client error", error }));
+});
+
 client.on("ready", async () => {
   registerCommand(client);
   setLogs("Bot is ready");
