@@ -82,46 +82,48 @@ let noOfDays = "0";
 
 // Event that triggers when a user interacts with a registered command
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isStringSelectMenu()) {
-    selectString(noOfDays, interaction, client);
-  }
-
-  if (interaction.isButton()) {
-    const customId = interaction.customId;
-    if (customId.startsWith("rating_")) {
-      getFeedback(interaction);
-    } else if (
-      customId.startsWith("query_resolved_") ||
-      customId.startsWith("need_support_")
-    ) {
-      await handleAIFeedback(interaction);
+  try {
+    if (interaction.isStringSelectMenu()) {
+      selectString(noOfDays, interaction, client);
     }
-  }
 
-  if (!interaction.isCommand()) return;
-  if (!interaction.isChatInputCommand()) return;
+    if (interaction.isButton()) {
+      const customId = interaction.customId;
+      if (customId.startsWith("rating_")) {
+        getFeedback(interaction);
+      } else if (
+        customId.startsWith("query_resolved_") ||
+        customId.startsWith("need_support_")
+      ) {
+        await handleAIFeedback(interaction);
+      }
+    }
 
-  switch (interaction.commandName) {
-    case "askglific":
-      // Join the arguments to form the user's question
-      await askGlific(interaction);
-      break;
-    case "post":
-      // Join the arguments to form the user's question
-      await post(interaction);
-      break;
+    if (!interaction.isCommand()) return;
+    if (!interaction.isChatInputCommand()) return;
 
-    case "close-ticket":
-      await closeTicket(interaction);
-      break;
+    switch (interaction.commandName) {
+      case "askglific":
+        await askGlific(interaction);
+        break;
+      case "post":
+        await post(interaction);
+        break;
 
-    case "support-metrics":
-      // Join the arguments to form the user's question
-      await supportMetrics(noOfDays, interaction, client);
-      break;
+      case "close-ticket":
+        await closeTicket(interaction);
+        break;
 
-        default:
-      setLogs("Unknown command: " + interaction.commandName);
-      break;
+      case "support-metrics":
+        await supportMetrics(noOfDays, interaction, client);
+        break;
+
+      default:
+        setLogs("Unknown command: " + interaction.commandName);
+        break;
+    }
+  } catch (error) {
+    console.error("Unhandled interaction error:", error);
+    setLogs(JSON.stringify({ message: "Unhandled interaction error", error }));
   }
 });

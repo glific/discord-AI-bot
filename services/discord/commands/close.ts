@@ -107,8 +107,11 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
     });
 
     await interaction.editReply({
-      content:
-        "❌ An error occurred while closing the ticket. Please try again.",
+      content: `❌ ${
+        error instanceof Error
+          ? error.message
+          : "An error occurred while closing the ticket. Please try again."
+      }`,
     });
   }
 };
