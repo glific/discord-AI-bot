@@ -203,22 +203,38 @@ export const onThreadUpdate = async (
 
     const resolvedTag = tags.find((tag) => tag.name === "Resolved");
 
-    if (resolvedTag && appliedTagsIds.includes(resolvedTag?.id)) {
-      closureTime = dayjs().diff(createdTimestamp, "minute").toString();
-      closedAt = dayjs().format("YYYY-MM-DD HH:mm");
-    }
+    const resolvedAdded =
+      resolvedTag && addedTags.includes(resolvedTag.id);
+    const resolvedRemoved =
+      resolvedTag && removedTags.includes(resolvedTag.id);
 
-    if (resolvedTag && removedTags.includes(resolvedTag?.id)) {
-      closureTime = "";
-      closedAt = "";
-    }
-
+    // By default only the Tags column is updated. Closure/response columns are
+    // touched ONLY on the specific transition that should set or clear them, so
+    // unrelated updates (another tag added, archive/unarchive, rename, slow-mode
+    // change, …) never re-stamp "Closed at" / "Closure Time".
     let values: any = {
       Tags: appliedTagsNames.join(", "),
-      "Closed at": closedAt,
-      "Closure Time": closureTime,
     };
 
+    if (resolvedAdded) {
+      // Ticket was just resolved — stamp the closure fields.
+      closureTime = dayjs().diff(createdTimestamp, "minute").toString();
+      closedAt = dayjs().format("YYYY-MM-DD HH:mm");
+      values = {
+        ...values,
+        "Closed at": closedAt,
+        "Closure Time": closureTime,
+      };
+    } else if (resolvedRemoved) {
+      // Ticket was reopened — clear the closure fields.
+      values = {
+        ...values,
+        "Closed at": "",
+        "Closure Time": "",
+      };
+    }
+
+    // First response is the moment the thread first receives any tag.
     if (oldTags.length === 0 && newTags.length > 0) {
       firstResponse = dayjs().format("YYYY-MM-DD HH:mm");
       responseTime = dayjs().diff(createdTimestamp, "minute").toString();
