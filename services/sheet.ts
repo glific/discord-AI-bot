@@ -105,7 +105,7 @@ export const updateSheets = async (
     const rowIndex = rows.findIndex((row) => row[idIndex] === id);
 
     if (rowIndex === -1) {
-      writeToSheets(writeValues);
+      await writeToSheets(writeValues);
       setLogs({
         message: "Row with the specified ID not found",
         threadId: id,

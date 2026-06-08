@@ -279,10 +279,15 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
   const queryResolved = customId.startsWith("query_resolved_");
   const needSupport = customId.startsWith("need_support_");
 
-  await interaction.reply({
-    content: `Recording your feedback...`,
-    ephemeral: true,
-  });
+  try {
+    await interaction.reply({
+      content: `Recording your feedback...`,
+      ephemeral: true,
+    });
+  } catch (error) {
+    console.error("Interaction expired before feedback reply:", error);
+    return;
+  }
 
   try {
     const writeValues = [

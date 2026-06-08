@@ -14,7 +14,7 @@ export const closeTicketLogic = async (
   thread: ThreadChannel,
   description?: string,
   closedOn?: string,
-  userId?: string,
+  userId?: string
 ) => {
   const firstMessage = await thread.fetchStarterMessage();
   const threadId = thread.id;
@@ -33,6 +33,11 @@ export const closeTicketLogic = async (
   const resolvedTag = tags.find((tag) => tag.name === "Resolved");
 
   if (resolvedTag && !currentTags.includes(resolvedTag.id)) {
+    if (currentTags.length >= 5) {
+      throw new Error(
+        "Cannot close ticket: this thread has too many tags applied. Applied tags should not be greater than 4 to allow adding the 'Resolved' tag. Please remove a tag and try again."
+      );
+    }
     await thread.setAppliedTags([...currentTags, resolvedTag.id]);
   }
   // Prepare values for sheet update
@@ -109,8 +114,11 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
     });
 
     await interaction.editReply({
-      content:
-        "❌ An error occurred while closing the ticket. Please try again.",
+      content: `❌ ${
+        error instanceof Error
+          ? error.message
+          : "An error occurred while closing the ticket. Please try again."
+      }`,
     });
   }
 };
@@ -162,7 +170,7 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
 const storeFeedback = async (
   thread: ThreadChannel,
   rating: number,
-  createdTimestamp: number | null,
+  createdTimestamp: number | null
 ) => {
   const firstMessage = await thread.fetchStarterMessage();
   const writeValues = [
@@ -188,6 +196,6 @@ const storeFeedback = async (
     {
       Rating: rating.toString(),
     },
-    writeValues,
+    writeValues
   );
 };
