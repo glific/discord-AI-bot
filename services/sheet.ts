@@ -2,6 +2,18 @@ import { google } from "googleapis";
 import { GoogleAuth } from "google-auth-library";
 import setLogs from "./logs";
 
+// Columns that must never be silently overwritten once they hold a value.
+// They may be SET (when currently empty) or CLEARED (written as ""), but an
+// automatic update will never replace an existing non-empty value. This keeps
+// closure/first-response timestamps stable across unrelated thread updates and
+// protects manual edits made directly in the sheet.
+export const WRITE_ONCE_COLUMNS = [
+  "First Response",
+  "Response time",
+  "Closed at",
+  "Closure Time",
+];
+
 export const testSheetsAccess = async () => {
   const auth = new GoogleAuth({
     scopes: "https://www.googleapis.com/auth/spreadsheets",
@@ -109,6 +121,20 @@ export const updateSheets = async (
             message: "Column not found",
             threadId: id,
           });
+          return;
+        }
+
+        // Write-once protection: never overwrite an already-set value in a
+        // protected column. Setting (empty -> value) and clearing (value -> "")
+        // are still allowed.
+        const existingValue = rows[rowIndex]?.[columnIndex];
+        if (
+          WRITE_ONCE_COLUMNS.includes(column) &&
+          existingValue !== undefined &&
+          existingValue !== "" &&
+          newValue !== undefined &&
+          newValue !== ""
+        ) {
           return;
         }
 

@@ -59,7 +59,9 @@ export const closeTicketLogic = async (
     ],
   ];
 
-  // Update the sheet
+  // Update the sheet. Closure columns are write-once (enforced inside
+  // updateSheets): the first close stamps them, later re-closes leave the
+  // original timestamps untouched.
   await updateSheets(threadId, values, writeValues);
 
   // Send rating request message
