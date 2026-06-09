@@ -165,7 +165,9 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
         content:
           "❌ There was an error recording your rating. Please try again.",
       });
-    } catch {}
+    } catch {
+      // initial reply may have failed (e.g. expired interaction) — nothing to do
+    }
   }
   return;
 };
