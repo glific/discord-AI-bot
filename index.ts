@@ -90,7 +90,7 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isButton()) {
       const customId = interaction.customId;
       if (customId.startsWith("rating_")) {
-        getFeedback(interaction);
+        await getFeedback(interaction);
       } else if (
         customId.startsWith("query_resolved_") ||
         customId.startsWith("need_support_")
