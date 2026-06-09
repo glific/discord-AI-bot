@@ -129,12 +129,13 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
   const ratingValue = parseInt(rating);
   const thread = interaction.channel as ThreadChannel;
 
-  // Custom message instead of "Bot is thinking"
-  await interaction.reply({
-    content: `⭐ Recording your rating...`,
-    ephemeral: true,
-  });
   try {
+    // Custom message instead of "Bot is thinking"
+    await interaction.reply({
+      content: `⭐ Recording your rating...`,
+      ephemeral: true,
+    });
+
     // Store the feedback
     await storeFeedback(thread, ratingValue, thread.createdTimestamp);
 
@@ -159,10 +160,12 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
       error: error,
       threadId,
     });
-    await interaction.reply({
-      content: "❌ There was an error recording your rating. Please try again.",
-      ephemeral: true,
-    });
+    try {
+      await interaction.editReply({
+        content:
+          "❌ There was an error recording your rating. Please try again.",
+      });
+    } catch {}
   }
   return;
 };
@@ -191,7 +194,7 @@ const storeFeedback = async (
       rating.toString(),
     ],
   ];
-  updateSheets(
+  await updateSheets(
     thread.id,
     {
       Rating: rating.toString(),
