@@ -71,4 +71,43 @@ export const summarizeThreadForGithub = async (
   }
 };
 
+const VALID_CATEGORIES = [
+  "UX Confusion",
+  "Missing feature",
+  "Bug",
+  "Documentation gap",
+  "Onboarding related",
+];
+
+export const categorizeThread = async (transcript: string): Promise<string> => {
+  try {
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Categorize this Discord support thread into exactly one of these categories:\n- ${VALID_CATEGORIES.join("\n- ")}\n\nReply with ONLY the category name, nothing else.`,
+          },
+          { role: "user", content: transcript },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        timeout: 60000,
+      },
+    );
+    const category =
+      response.data?.choices?.[0]?.message?.content?.trim() ?? "";
+    return VALID_CATEGORIES.includes(category) ? category : "";
+  } catch (e) {
+    setLogs(JSON.stringify(e));
+    return "";
+  }
+};
+
 export default getAnswerFromOpenAIAssistant;

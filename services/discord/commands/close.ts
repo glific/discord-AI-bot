@@ -7,6 +7,7 @@ import setLogs from "../../logs";
 import dayjs from "dayjs";
 import { updateSheets } from "../../sheet";
 import { getForumTags, getRatingButtons } from "../../../constants";
+import { categorizeThread } from "../../openai";
 
 // This function is extracted to be reusable across different interaction types:
 // - Can be called with ChatInputCommandInteraction and ButtonInteraction
@@ -77,6 +78,7 @@ export const closeTicketLogic = async (
       "", // AI Feedback
       "", // Rating
       conversation, // Conversation
+      "", // Issue Category
     ],
   ];
 
@@ -84,6 +86,17 @@ export const closeTicketLogic = async (
   // updateSheets): the first close stamps them, later re-closes leave the
   // original timestamps untouched.
   await updateSheets(threadId, values, writeValues);
+
+  // Async categorization — does not block ticket close
+  categorizeThread(conversation)
+    .then((category) => {
+      if (category) {
+        return updateSheets(threadId, { "Issue Category": category }, [[threadId]]);
+      }
+    })
+    .catch((err) => {
+      setLogs({ message: "Error categorizing thread", error: err, threadId });
+    });
 
   // Send rating request message
   await thread.send({
@@ -211,6 +224,7 @@ const storeFeedback = async (
       "", // AI Feedback,
       rating.toString(),
       "", // Conversation
+      "", // Issue Category
     ],
   ];
   await updateSheets(
