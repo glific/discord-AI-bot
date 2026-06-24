@@ -12,8 +12,8 @@ import getAnswerFromOpenAIAssistant from "../openai";
 import dayjs from "dayjs";
 import { updateSheets, writeToSheets } from "../sheet";
 import setLogs from "../logs";
-import { getForumTags } from "../../constants";
-import { closeTicketLogic } from "./commands/close";
+import { getForumTags, getRatingButtons } from "../../constants";
+import { recordTicketClosure } from "./commands/close";
 import { createGitHubIssueFromThread } from "../github";
 
 const DISCORD_MAX_CONTENT = 2000;
@@ -344,12 +344,16 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       );
 
       // close the ticket when query is resolved
-      await closeTicketLogic(
+      await recordTicketClosure(
         thread,
         "Closed via AI feedback - Query resolved",
         dayjs().format("YYYY-MM-DD HH:mm"),
-        interaction.user.id,
       );
+
+      await thread.send({
+        content: `**Please leave a quick rating to help us improve:**`,
+        components: [getRatingButtons(thread.id)],
+      });
     } else if (needSupport) {
       const role = thread.guild.roles.cache.find(
         (role) => role.name === "Glific Support",

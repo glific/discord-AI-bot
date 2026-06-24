@@ -1,6 +1,8 @@
 import {
   ButtonInteraction,
   ChatInputCommandInteraction,
+  Collection,
+  Message,
   ThreadChannel,
 } from "discord.js";
 import setLogs from "../../logs";
@@ -9,114 +11,108 @@ import { updateSheets } from "../../sheet";
 import { getForumTags, getRatingButtons } from "../../../constants";
 import { categorizeThread } from "../../openai";
 
-// This function is extracted to be reusable across different interaction types:
-// - Can be called with ChatInputCommandInteraction and ButtonInteraction
-export const closeTicketLogic = async (
+const buildConversationTranscript = (
+  messages: Collection<string, Message<boolean>>,
+): string =>
+  Array.from(messages.values())
+    .reverse()
+    .filter((m) => m.content?.trim())
+    .map(
+      (m) =>
+        `**${m.author.username}${m.author.bot ? " (bot)" : ""}:** ${m.content}`,
+    )
+    .join("\n\n");
+
+const detectDevInvolvement = (
+  messages: Collection<string, Message<boolean>>,
+): "Yes" | "No" => {
+  const devUsernames = (process.env.DEV_USERNAMES || "")
+    .split(",")
+    .map((u) => u.trim().toLowerCase())
+    .filter(Boolean);
+  if (devUsernames.length === 0) return "No";
+  return Array.from(messages.values()).some((m) =>
+    devUsernames.includes(m.author.username.toLowerCase()),
+  )
+    ? "Yes"
+    : "No";
+};
+
+// Records closure data to the sheet and fires async categorization.
+// Does NOT send any Discord messages — callers handle user-facing replies.
+export const recordTicketClosure = async (
   thread: ThreadChannel,
   description?: string,
   closedOn?: string,
-  userId?: string
 ) => {
-  const firstMessage = await thread.fetchStarterMessage();
   const threadId = thread.id;
   const createdTimestamp = thread.createdTimestamp;
-  const userMention = userId ? `<@${userId}>` : `<@${thread?.ownerId}>`;
+  const firstMessage = await thread.fetchStarterMessage();
 
-  // Calculate closure time in minutes
   const closureTimeMinutes = dayjs().diff(createdTimestamp, "minute");
   const closedAt = closedOn || dayjs().format("YYYY-MM-DD HH:mm");
 
-  // Add the "Resolved" tag if not already present
   const currentTags = thread.appliedTags;
-
   const tags = getForumTags(thread.client);
-
   const resolvedTag = tags.find((tag) => tag.name === "Resolved");
-
   if (resolvedTag && !currentTags.includes(resolvedTag.id)) {
     if (currentTags.length >= 5) {
       throw new Error(
-        "Cannot close ticket: this thread has too many tags applied. Applied tags should not be greater than 4 to allow adding the 'Resolved' tag. Please remove a tag and try again."
+        "Cannot close ticket: this thread has too many tags applied. Applied tags should not be greater than 4 to allow adding the 'Resolved' tag. Please remove a tag and try again.",
       );
     }
     await thread.setAppliedTags([...currentTags, resolvedTag.id]);
   }
 
-  // Build conversation transcript from thread messages
   const messages = await thread.messages.fetch({ limit: 100 });
-  const conversation = Array.from(messages.values())
-    .reverse()
-    .filter((m) => m.content?.trim())
-    .map(
-      (m) =>
-        `**${m.author.username}${m.author.bot ? " (bot)" : ""}:** ${m.content}`
-    )
-    .join("\n\n");
+  const conversation = buildConversationTranscript(messages);
+  const devInvolved = detectDevInvolvement(messages);
 
-  const devUsernames = (process.env.DEV_USERNAMES || "")
-    .split(",")
-    .map((u) => u.trim().toLowerCase())
-    .filter(Boolean);
-  const devInvolved =
-    devUsernames.length > 0 &&
-    Array.from(messages.values()).some((m) =>
-      devUsernames.includes(m.author.username.toLowerCase())
-    )
-      ? "Yes"
-      : "No";
-
-  // Prepare values for sheet update
-  const values: any = {
-    "Closure Time": closureTimeMinutes.toString(),
-    "Closed at": closedAt,
-    Description: description || "Closed via AI feedback - Query resolved",
-    Conversation: conversation,
-    "Dev Involved": devInvolved,
-  };
-
-  const writeValues = [
+  await updateSheets(
+    threadId,
+    {
+      "Closure Time": closureTimeMinutes.toString(),
+      "Closed at": closedAt,
+      Description: description || "Closed via AI feedback - Query resolved",
+      Conversation: conversation,
+      "Dev Involved": devInvolved,
+    },
     [
-      threadId, //thread_id
-      dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-      firstMessage?.author.username, // Raised By
-      thread.name, // Title
-      "", // Tags
-      "", // First Response
-      "", // Response time
-      closedAt, // Closed at
-      closureTimeMinutes.toString(), // Closure Time
-      description || "Manually closed via command",
-      "", // Post
-      "", // AI response,
-      "", // AI Feedback
-      "", // Rating
-      conversation, // Conversation
-      "", // Issue Category
-      devInvolved, // Dev Involved
+      [
+        threadId,
+        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"),
+        firstMessage?.author.username,
+        thread.name,
+        "", // Tags
+        "", // First Response
+        "", // Response time
+        closedAt,
+        closureTimeMinutes.toString(),
+        description || "Manually closed via command",
+        "", // Post
+        "", // AI response
+        "", // AI Feedback
+        "", // Rating
+        conversation,
+        "", // Issue Category
+        devInvolved,
+      ],
     ],
-  ];
+  );
 
-  // Update the sheet. Closure columns are write-once (enforced inside
-  // updateSheets): the first close stamps them, later re-closes leave the
-  // original timestamps untouched.
-  await updateSheets(threadId, values, writeValues);
-
-  // Async categorization — does not block ticket close
   categorizeThread(conversation)
     .then((category) => {
       if (category) {
-        return updateSheets(threadId, { "Issue Category": category }, [[threadId]]);
+        return updateSheets(
+          threadId,
+          { "Issue Category": category },
+          [[threadId]],
+        );
       }
     })
     .catch((err) => {
       setLogs({ message: "Error categorizing thread", error: err, threadId });
     });
-
-  // Send rating request message
-  await thread.send({
-    content: `**Please leave a quick rating to help us improve:**`,
-    components: [getRatingButtons(threadId)],
-  });
 };
 
 export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
@@ -124,7 +120,6 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
   const closedOn = interaction.options.get("closed-on")?.value?.toString();
   const thread = interaction.channel as ThreadChannel;
 
-  // Check if the command is being used in a thread
   if (
     !interaction.channel?.isThread() ||
     thread.parentId !== process.env.CHANNEL_ID
@@ -142,9 +137,13 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
   });
 
   try {
-    await closeTicketLogic(thread, description, closedOn);
+    await recordTicketClosure(thread, description, closedOn);
 
-    // Send confirmation message
+    await thread.send({
+      content: `**Please leave a quick rating to help us improve:**`,
+      components: [getRatingButtons(thread.id)],
+    });
+
     await interaction.editReply({
       content: `✅ Ticket closed successfully!`,
     });
@@ -173,28 +172,24 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
   const thread = interaction.channel as ThreadChannel;
 
   try {
-    // Custom message instead of "Bot is thinking"
     await interaction.reply({
       content: `⭐ Recording your rating...`,
       ephemeral: true,
     });
 
-    // Store the feedback
     await storeFeedback(thread, ratingValue, thread.createdTimestamp);
 
-    // Acknowledge the rating using editReply
     await interaction.editReply({
       content: `Thank you for rating our support! You gave us ${ratingValue} star${
         ratingValue > 1 ? "s" : ""
       } 🙏`,
     });
 
-    // Remove the rating buttons from the original message
     await interaction.message.edit({
       content: `🔒 This support ticket has been closed.\n\n✅ **Rating received:** ${ratingValue} star${
         ratingValue > 1 ? "s" : ""
       } `,
-      components: [], // Remove the buttons
+      components: [],
     });
   } catch (error) {
     console.error("Error handling rating:", error);
@@ -218,35 +213,32 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
 const storeFeedback = async (
   thread: ThreadChannel,
   rating: number,
-  createdTimestamp: number | null
+  createdTimestamp: number | null,
 ) => {
   const firstMessage = await thread.fetchStarterMessage();
-  const writeValues = [
-    [
-      thread.id, //thread_id
-      dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-      firstMessage?.author.username, // Raised By
-      thread.name, // Title
-      "", // Tags
-      "", // First Response
-      "", // Response time
-      "", // Closed at
-      "", // Closure Time
-      "", // Description
-      "", // Post
-      "", // AI response,
-      "", // AI Feedback,
-      rating.toString(),
-      "", // Conversation
-      "", // Issue Category
-      "", // Dev Involved
-    ],
-  ];
   await updateSheets(
     thread.id,
-    {
-      Rating: rating.toString(),
-    },
-    writeValues
+    { Rating: rating.toString() },
+    [
+      [
+        thread.id,
+        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"),
+        firstMessage?.author.username,
+        thread.name,
+        "", // Tags
+        "", // First Response
+        "", // Response time
+        "", // Closed at
+        "", // Closure Time
+        "", // Description
+        "", // Post
+        "", // AI response
+        "", // AI Feedback
+        rating.toString(),
+        "", // Conversation
+        "", // Issue Category
+        "", // Dev Involved
+      ],
+    ],
   );
 };
