@@ -166,6 +166,9 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
         "", //Description,
         message,
         answer,
+        "", // AI Feedback
+        "", // Rating
+        "", // Conversation
       ],
     ];
     await writeToSheets(values);
@@ -260,6 +263,9 @@ export const onThreadUpdate = async (
         "", // Description
         "", // Post
         "", // AI response
+        "", // AI Feedback
+        "", // Rating
+        "", // Conversation
       ],
     ];
 
@@ -306,6 +312,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
         "", // AI response,
         `${(queryResolved && "Yes") || (needSupport && "No") || "No response"}`, // AI Feedback,
         "", // Rating
+        "", // Conversation
       ],
     ];
 

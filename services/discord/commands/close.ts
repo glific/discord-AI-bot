@@ -40,11 +40,24 @@ export const closeTicketLogic = async (
     }
     await thread.setAppliedTags([...currentTags, resolvedTag.id]);
   }
+
+  // Build conversation transcript from thread messages
+  const messages = await thread.messages.fetch({ limit: 100 });
+  const conversation = Array.from(messages.values())
+    .reverse()
+    .filter((m) => m.content?.trim())
+    .map(
+      (m) =>
+        `**${m.author.username}${m.author.bot ? " (bot)" : ""}:** ${m.content}`
+    )
+    .join("\n\n");
+
   // Prepare values for sheet update
   const values: any = {
     "Closure Time": closureTimeMinutes.toString(),
     "Closed at": closedAt,
     Description: description || "Closed via AI feedback - Query resolved",
+    Conversation: conversation,
   };
 
   const writeValues = [
@@ -61,6 +74,9 @@ export const closeTicketLogic = async (
       description || "Manually closed via command",
       "", // Post
       "", // AI response,
+      "", // AI Feedback
+      "", // Rating
+      conversation, // Conversation
     ],
   ];
 
@@ -194,6 +210,7 @@ const storeFeedback = async (
       "", // AI response,
       "", // AI Feedback,
       rating.toString(),
+      "", // Conversation
     ],
   ];
   await updateSheets(
