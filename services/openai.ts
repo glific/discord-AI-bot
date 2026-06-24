@@ -1,5 +1,5 @@
-import setLogs from "./logs";
 import axios from "axios";
+import setLogs from "./logs";
 
 const getAnswerFromOpenAIAssistant = async (message: string) => {
   try {
@@ -22,7 +22,7 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
 
     const response = await axios.post(endpoint, data, config);
     const outputItem = response.data.output?.find(
-      (item: any) => item.type === "message" && item.content?.length > 0
+      (item: any) => item.type === "message" && item.content?.length > 0,
     );
     const answer = outputItem?.content?.[0]?.text;
 
@@ -77,6 +77,10 @@ const VALID_CATEGORIES = [
   "Bug",
   "Documentation gap",
   "Onboarding related",
+  "Misconfiguration",
+  "Performance issue",
+  "Third party",
+  "Access/Permission issue",
 ];
 
 export const categorizeThread = async (transcript: string): Promise<string> => {

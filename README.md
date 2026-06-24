@@ -14,17 +14,41 @@ A comprehensive Discord bot for Glific support with AI-powered responses, ticket
 
 - Node.js (v16 or higher)
 - Discord Bot Token
-- OpenAI API Key
-- Google Cloud Service Account
+    - Create a new bot in Discord Developer Portal and enabled `Message Content` intent.
+    - Install the bot in a test server using Discord Provided Link (You need to be a server admin)
+    - After installing limit bot to test channel in Server Settings > Integrations > Bots > Manage
+- OpenAI API Key (For first AI Response)
+    - You also need to create a new prompt in OpenAI Platform for the assistant response and save id into `OPENAI_PROMPT_ID`
+- Google Cloud Service Account (For Google Sheets Integration)
+    - Create a new service account and download the JSON key file.
+    - Add the service account email to the Google Sheet and grant it `Editor` access.
 
-## 🛠️ Installation
+## 🧪 Testing Locally
 
-### 1. Clone the repository
+### 1. Set up environment variables
 
 ```bash
-git clone <repository-url>
-cd discord-AI-bot
+cp .env.example .env
 ```
+
+Fill in the required values in `.env`:
+
+| Variable | Where to find it |
+|---|---|
+| `BOT_TOKEN` | [Discord Developer Portal](https://discord.com/developers/applications) → Your App → Bot → Token |
+| `GUILD_ID` | Discord → Server Settings → Widget → Server ID (enable Developer Mode first) |
+| `CHANNEL_ID` | Right-click the forum channel in Discord → Copy Channel ID |
+| `OPENAI_API_KEY` | [OpenAI Platform](https://platform.openai.com/api-keys) |
+| `OPENAI_PROMPT_ID` | OpenAI Platform → Assistants → your assistant ID |
+| `GCP_CLIENT_EMAIL` | Google Cloud → IAM → Service Accounts → your service account email |
+| `GCP_PRIVATE_KEY` | Google Cloud → Service Account → Keys → Add Key (JSON) — copy the `private_key` field |
+| `SPREADSHEET_ID` | From the Google Sheet URL: `docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit` |
+| `GITHUB_TOKEN` | GitHub → Settings → Developer settings → Personal access tokens (needs `repo` scope) |
+| `GITHUB_REPO_OWNER` | GitHub username or org name |
+| `GITHUB_REPO_NAME` | Repository name |
+
+`LOG_FLARE_SOURCE` and `LOG_FLARE_API` are optional — the bot runs fine without them.
+`GITHUB_*` is optional — the bot runs fine without them.
 
 ### 2. Install dependencies
 
@@ -32,20 +56,26 @@ cd discord-AI-bot
 yarn install
 ```
 
-### 3. Environment Configuration
-
-Create a `.env` file in the root directory:
-Copy from .env.example
+### 3. Run in dev mode (hot reload)
 
 ```bash
-    cp .env.example .env
+yarn dev
 ```
 
-### Development
+The bot will connect to Discord and log `Bot is ready!` when it starts. Slash commands are registered automatically on startup.
 
-```bash
-yarn run dev
-```
+### 4. Test a ticket flow
+
+1. Open the configured forum channel in Discord
+2. Post a new thread — the bot should reply automatically with an AI response and feedback buttons
+3. Use `/close-ticket` inside the thread to close it
+4. Check the Google Sheet — the row should populate with timestamps, the conversation transcript, and (after a few seconds) an AI-assigned **Issue Category**
+
+### Troubleshooting
+
+- **Bot doesn't respond to new threads**: confirm `CHANNEL_ID` matches the forum channel, not a text channel
+- **Sheet not updating**: verify the service account has **Editor** access to the spreadsheet
+- **`Issue Category` column empty**: ensure the `Conversation` and `Issue Category` column headers exist in the "Tickets" sheet tab
 
 ## 🤖 Bot Commands
 
