@@ -170,6 +170,7 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
         "", // Rating
         "", // Conversation
         "", // Issue Category
+        "", // Dev Involved
       ],
     ];
     await writeToSheets(values);
@@ -268,6 +269,7 @@ export const onThreadUpdate = async (
         "", // Rating
         "", // Conversation
         "", // Issue Category
+        "", // Dev Involved
       ],
     ];
 
@@ -316,6 +318,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
         "", // Rating
         "", // Conversation
         "", // Issue Category
+        "", // Dev Involved
       ],
     ];
 

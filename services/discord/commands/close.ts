@@ -53,12 +53,25 @@ export const closeTicketLogic = async (
     )
     .join("\n\n");
 
+  const devUsernames = (process.env.DEV_USERNAMES || "")
+    .split(",")
+    .map((u) => u.trim().toLowerCase())
+    .filter(Boolean);
+  const devInvolved =
+    devUsernames.length > 0 &&
+    Array.from(messages.values()).some((m) =>
+      devUsernames.includes(m.author.username.toLowerCase())
+    )
+      ? "Yes"
+      : "No";
+
   // Prepare values for sheet update
   const values: any = {
     "Closure Time": closureTimeMinutes.toString(),
     "Closed at": closedAt,
     Description: description || "Closed via AI feedback - Query resolved",
     Conversation: conversation,
+    "Dev Involved": devInvolved,
   };
 
   const writeValues = [
@@ -79,6 +92,7 @@ export const closeTicketLogic = async (
       "", // Rating
       conversation, // Conversation
       "", // Issue Category
+      devInvolved, // Dev Involved
     ],
   ];
 
@@ -225,6 +239,7 @@ const storeFeedback = async (
       rating.toString(),
       "", // Conversation
       "", // Issue Category
+      "", // Dev Involved
     ],
   ];
   await updateSheets(
