@@ -12,8 +12,8 @@ import getAnswerFromOpenAIAssistant from "../openai";
 import dayjs from "dayjs";
 import { updateSheets, writeToSheets } from "../sheet";
 import setLogs from "../logs";
-import { getForumTags } from "../../constants";
-import { closeTicketLogic } from "./commands/close";
+import { getForumTags, getRatingButtons } from "../../constants";
+import { recordTicketClosure } from "./commands/close";
 import { createGitHubIssueFromThread } from "../github";
 
 const DISCORD_MAX_CONTENT = 2000;
@@ -166,6 +166,11 @@ export const onThreadCreate = async (thread: ThreadChannel) => {
         "", //Description,
         message,
         answer,
+        "", // AI Feedback
+        "", // Rating
+        "", // Conversation
+        "", // Issue Category
+        "", // Dev Involved
       ],
     ];
     await writeToSheets(values);
@@ -212,7 +217,7 @@ export const onThreadUpdate = async (
     // touched ONLY on the specific transition that should set or clear them, so
     // unrelated updates (another tag added, archive/unarchive, rename, slow-mode
     // change, …) never re-stamp "Closed at" / "Closure Time".
-    let values: any = {
+    let values: Record<string, string> = {
       Tags: appliedTagsNames.join(", "),
     };
 
@@ -245,25 +250,7 @@ export const onThreadUpdate = async (
       };
     }
 
-    const firstMessage = await newThread.fetchStarterMessage();
-    const writeValues = [
-      [
-        threadId, // thread_id
-        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-        firstMessage?.author.username, // Raised By
-        newThread.name, // Title
-        appliedTagsNames.join(", "), // Tags
-        firstResponse, // First Response
-        responseTime, // Response time
-        closedAt, // Closed at
-        closureTime, // Closure Time
-        "", // Description
-        "", // Post
-        "", // AI response
-      ],
-    ];
-
-    await updateSheets(threadId, values, writeValues);
+    await updateSheets(threadId, values);
 
     const devTag = tags.find((tag) => tag.name === "Dev");
     if (devTag && addedTags.includes(devTag.id)) {
@@ -290,35 +277,12 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
   }
 
   try {
-    const writeValues = [
-      [
-        threadId, //thread_id
-        dayjs(thread.createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-        interaction.user.username,
-        "", // Title
-        "", // Tags
-        "", // First Response
-        "", // Response time
-        "", // Closed at
-        "", // Closure Time
-        "", // Description
-        "", // Post
-        "", // AI response,
-        `${(queryResolved && "Yes") || (needSupport && "No") || "No response"}`, // AI Feedback,
-        "", // Rating
-      ],
-    ];
-
     if (threadId) {
-      await updateSheets(
-        threadId,
-        {
-          "AI Feedback": `${
-            (queryResolved && "Yes") || (needSupport && "No") || "No response"
-          }`,
-        },
-        writeValues,
-      );
+      await updateSheets(threadId, {
+        "AI Feedback": `${
+          (queryResolved && "Yes") || (needSupport && "No") || "No response"
+        }`,
+      });
     }
 
     if (queryResolved) {
@@ -331,12 +295,16 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       );
 
       // close the ticket when query is resolved
-      await closeTicketLogic(
+      await recordTicketClosure(
         thread,
         "Closed via AI feedback - Query resolved",
         dayjs().format("YYYY-MM-DD HH:mm"),
-        interaction.user.id,
       );
+
+      await thread.send({
+        content: `**Please leave a quick rating to help us improve:**`,
+        components: [getRatingButtons(thread.id)],
+      });
     } else if (needSupport) {
       const role = thread.guild.roles.cache.find(
         (role) => role.name === "Glific Support",

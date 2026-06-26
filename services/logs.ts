@@ -25,10 +25,11 @@ const setLogs = (error: any) => {
           },
         },
       },
-      stream
+      stream,
     );
-    console.log(error);
     logger.error(error);
+  } else {
+    console.error(error);
   }
 };
 

@@ -1,5 +1,5 @@
-import setLogs from "./logs";
 import axios from "axios";
+import setLogs from "./logs";
 
 const getAnswerFromOpenAIAssistant = async (message: string) => {
   try {
@@ -22,7 +22,7 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
 
     const response = await axios.post(endpoint, data, config);
     const outputItem = response.data.output?.find(
-      (item: any) => item.type === "message" && item.content?.length > 0
+      (item: any) => item.type === "message" && item.content?.length > 0,
     );
     const answer = outputItem?.content?.[0]?.text;
 
@@ -68,6 +68,49 @@ export const summarizeThreadForGithub = async (
   } catch (e) {
     setLogs(JSON.stringify(e));
     return "_(Summary generation failed — please review the thread manually.)_";
+  }
+};
+
+const VALID_CATEGORIES = [
+  "UX Confusion",
+  "Missing feature",
+  "Bug",
+  "Documentation gap",
+  "Onboarding related",
+  "Misconfiguration",
+  "Performance issue",
+  "Third party",
+  "Access/Permission issue",
+];
+
+export const categorizeThread = async (transcript: string): Promise<string> => {
+  try {
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Categorize this Discord support thread into exactly one of these categories:\n- ${VALID_CATEGORIES.join("\n- ")}\n\nReply with ONLY the category name, nothing else.`,
+          },
+          { role: "user", content: transcript },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        timeout: 60000,
+      },
+    );
+    const category =
+      response.data?.choices?.[0]?.message?.content?.trim() ?? "";
+    return VALID_CATEGORIES.includes(category) ? category : "";
+  } catch (e) {
+    setLogs(JSON.stringify(e));
+    return "";
   }
 };
 
