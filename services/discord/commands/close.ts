@@ -68,46 +68,18 @@ export const recordTicketClosure = async (
   const conversation = buildConversationTranscript(messages);
   const devInvolved = detectDevInvolvement(messages);
 
-  await updateSheets(
-    threadId,
-    {
-      "Closure Time": closureTimeMinutes.toString(),
-      "Closed at": closedAt,
-      Description: description || "Closed via AI feedback - Query resolved",
-      Conversation: conversation,
-      "Dev Involved": devInvolved,
-    },
-    [
-      [
-        threadId,
-        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"),
-        firstMessage?.author.username,
-        thread.name,
-        "", // Tags
-        "", // First Response
-        "", // Response time
-        closedAt,
-        closureTimeMinutes.toString(),
-        description || "Manually closed via command",
-        "", // Post
-        "", // AI response
-        "", // AI Feedback
-        "", // Rating
-        conversation,
-        "", // Issue Category
-        devInvolved,
-      ],
-    ],
-  );
+  await updateSheets(threadId, {
+    "Closure Time": closureTimeMinutes.toString(),
+    "Closed at": closedAt,
+    Description: description || "Closed via AI feedback - Query resolved",
+    Conversation: conversation,
+    "Dev Involved": devInvolved,
+  });
 
   categorizeThread(conversation)
     .then((category) => {
       if (category) {
-        return updateSheets(
-          threadId,
-          { "Issue Category": category },
-          [[threadId]],
-        );
+        return updateSheets(threadId, { "Issue Category": category });
       }
     })
     .catch((err) => {
@@ -213,32 +185,7 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
 const storeFeedback = async (
   thread: ThreadChannel,
   rating: number,
-  createdTimestamp: number | null,
+  _createdTimestamp: number | null,
 ) => {
-  const firstMessage = await thread.fetchStarterMessage();
-  await updateSheets(
-    thread.id,
-    { Rating: rating.toString() },
-    [
-      [
-        thread.id,
-        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"),
-        firstMessage?.author.username,
-        thread.name,
-        "", // Tags
-        "", // First Response
-        "", // Response time
-        "", // Closed at
-        "", // Closure Time
-        "", // Description
-        "", // Post
-        "", // AI response
-        "", // AI Feedback
-        rating.toString(),
-        "", // Conversation
-        "", // Issue Category
-        "", // Dev Involved
-      ],
-    ],
-  );
+  await updateSheets(thread.id, { Rating: rating.toString() });
 };

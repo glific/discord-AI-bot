@@ -217,7 +217,7 @@ export const onThreadUpdate = async (
     // touched ONLY on the specific transition that should set or clear them, so
     // unrelated updates (another tag added, archive/unarchive, rename, slow-mode
     // change, …) never re-stamp "Closed at" / "Closure Time".
-    let values: any = {
+    let values: Record<string, string> = {
       Tags: appliedTagsNames.join(", "),
     };
 
@@ -250,30 +250,7 @@ export const onThreadUpdate = async (
       };
     }
 
-    const firstMessage = await newThread.fetchStarterMessage();
-    const writeValues = [
-      [
-        threadId, // thread_id
-        dayjs(createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-        firstMessage?.author.username, // Raised By
-        newThread.name, // Title
-        appliedTagsNames.join(", "), // Tags
-        firstResponse, // First Response
-        responseTime, // Response time
-        closedAt, // Closed at
-        closureTime, // Closure Time
-        "", // Description
-        "", // Post
-        "", // AI response
-        "", // AI Feedback
-        "", // Rating
-        "", // Conversation
-        "", // Issue Category
-        "", // Dev Involved
-      ],
-    ];
-
-    await updateSheets(threadId, values, writeValues);
+    await updateSheets(threadId, values);
 
     const devTag = tags.find((tag) => tag.name === "Dev");
     if (devTag && addedTags.includes(devTag.id)) {
@@ -300,38 +277,12 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
   }
 
   try {
-    const writeValues = [
-      [
-        threadId, //thread_id
-        dayjs(thread.createdTimestamp).format("YYYY-MM-DD HH:mm"), // Date
-        interaction.user.username,
-        "", // Title
-        "", // Tags
-        "", // First Response
-        "", // Response time
-        "", // Closed at
-        "", // Closure Time
-        "", // Description
-        "", // Post
-        "", // AI response,
-        `${(queryResolved && "Yes") || (needSupport && "No") || "No response"}`, // AI Feedback,
-        "", // Rating
-        "", // Conversation
-        "", // Issue Category
-        "", // Dev Involved
-      ],
-    ];
-
     if (threadId) {
-      await updateSheets(
-        threadId,
-        {
-          "AI Feedback": `${
-            (queryResolved && "Yes") || (needSupport && "No") || "No response"
-          }`,
-        },
-        writeValues,
-      );
+      await updateSheets(threadId, {
+        "AI Feedback": `${
+          (queryResolved && "Yes") || (needSupport && "No") || "No response"
+        }`,
+      });
     }
 
     if (queryResolved) {

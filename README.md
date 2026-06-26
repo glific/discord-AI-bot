@@ -39,7 +39,7 @@ Fill in the required values in `.env`:
 | `GUILD_ID` | Discord → Server Settings → Widget → Server ID (enable Developer Mode first) |
 | `CHANNEL_ID` | Right-click the forum channel in Discord → Copy Channel ID |
 | `OPENAI_API_KEY` | [OpenAI Platform](https://platform.openai.com/api-keys) |
-| `OPENAI_PROMPT_ID` | OpenAI Platform → Assistants → your assistant ID |
+| `OPENAI_PROMPT_ID` | OpenAI Platform → Prompt for Assistant Response |
 | `GCP_CLIENT_EMAIL` | Google Cloud → IAM → Service Accounts → your service account email |
 | `GCP_PRIVATE_KEY` | Google Cloud → Service Account → Keys → Add Key (JSON) — copy the `private_key` field |
 | `SPREADSHEET_ID` | From the Google Sheet URL: `docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit` |
