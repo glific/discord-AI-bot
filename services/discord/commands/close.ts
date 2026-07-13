@@ -47,7 +47,6 @@ export const recordTicketClosure = async (
 ) => {
   const threadId = thread.id;
   const createdTimestamp = thread.createdTimestamp;
-  const firstMessage = await thread.fetchStarterMessage();
 
   const closureTimeMinutes = dayjs().diff(createdTimestamp, "minute");
   const closedAt = closedOn || dayjs().format("YYYY-MM-DD HH:mm");
