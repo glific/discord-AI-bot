@@ -46,7 +46,6 @@ Fill in the required values in `.env`:
 | `GITHUB_APP_ID` | GitHub App settings page → App ID |
 | `GITHUB_APP_PRIVATE_KEY` | GitHub App settings → Private keys → Generate (paste the `.pem` contents, newlines as `\n`) |
 | `GITHUB_APP_INSTALLATION_ID` | Org settings → GitHub Apps → Configure — the number at the end of the URL |
-| `GITHUB_TOKEN` | Fallback when the `GITHUB_APP_*` vars are unset: personal access token with `repo` and `project` scopes |
 | `GITHUB_REPO_OWNER` | GitHub username or org name (`glific`) |
 | `GITHUB_REPO_NAME` | Repository name (`glific`) |
 | `GITHUB_PROJECT_NUMBER` | Org project the issue is added to (`8`); leave empty to skip |

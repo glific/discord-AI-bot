@@ -13,15 +13,12 @@ const createOctokit = (): Octokit | null => {
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY?.split("\\n").join("\n");
   const installationId = process.env.GITHUB_APP_INSTALLATION_ID;
 
-  if (appId && privateKey && installationId) {
-    return new Octokit({
-      authStrategy: createAppAuth,
-      auth: { appId, privateKey, installationId },
-    });
-  }
+  if (!appId || !privateKey || !installationId) return null;
 
-  const token = process.env.GITHUB_TOKEN;
-  return token ? new Octokit({ auth: token }) : null;
+  return new Octokit({
+    authStrategy: createAppAuth,
+    auth: { appId, privateKey, installationId },
+  });
 };
 
 type ProjectFields = {
@@ -203,7 +200,7 @@ export const createGitHubIssueFromThread = async (
   if (!owner || !repo || !octokit) {
     setLogs({
       message:
-        "GitHub env vars missing (GITHUB_REPO_OWNER / GITHUB_REPO_NAME and GITHUB_APP_* or GITHUB_TOKEN) — skipping issue creation",
+        "GitHub env vars missing (GITHUB_REPO_OWNER / GITHUB_REPO_NAME / GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY / GITHUB_APP_INSTALLATION_ID) — skipping issue creation",
       threadId: thread.id,
     });
     return;
