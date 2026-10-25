@@ -145,6 +145,18 @@ const attachToBoard = async (
   }
 };
 
+const buildTranscript = async (thread: ThreadChannel): Promise<string> => {
+  const messages = await thread.messages.fetch({ limit: 100 });
+  return Array.from(messages.values())
+    .reverse()
+    .filter((m) => m.content?.trim())
+    .map(
+      (m) =>
+        `**${m.author.username}${m.author.bot ? " (bot)" : ""}:** ${m.content}`,
+    )
+    .join("\n\n");
+};
+
 const buildIssueBody = (params: {
   threadUrl: string;
   author: string;
@@ -191,8 +203,9 @@ export const createGitHubIssueFromThread = async (
     const firstMessage = starter?.content ?? "";
     const author = starter?.author.username ?? thread.ownerId ?? "unknown";
 
+    const transcript = await buildTranscript(thread);
     const summary = await summarizeThreadForGithub(
-      `Title: ${thread.name}\n\n${firstMessage}`,
+      `Title: ${thread.name}\n\n${transcript}`,
     );
 
     const threadUrl = `https://discord.com/channels/${process.env.GUILD_ID}/${thread.id}`;
