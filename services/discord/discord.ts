@@ -11,7 +11,7 @@ import {
 import getAnswerFromOpenAIAssistant from "../openai";
 import dayjs from "dayjs";
 import { updateSheets, writeToSheets } from "../sheet";
-import setLogs from "../logs";
+import { logError } from "../logs";
 import { getForumTags, getRatingButtons } from "../../constants";
 import { recordTicketClosure } from "./commands/close";
 import { createGitHubIssueFromThread } from "../github";
@@ -103,11 +103,7 @@ export async function registerCommand(client: Client) {
       );
     }
   } catch (error) {
-    console.error("Error registering command:", error);
-    setLogs({
-      message: "Error registering command",
-      error,
-    });
+    logError("Error registering command", error);
   }
 }
 
@@ -320,12 +316,7 @@ export const handleAIFeedback = async (interaction: ButtonInteraction) => {
       components: [], // Remove the buttons
     });
   } catch (error) {
-    console.error("Error handling AI feedback:", error);
-    setLogs({
-      message: "Error handling AI feedback",
-      error: error,
-      threadId: threadId!,
-    });
+    logError("Error handling AI feedback", error);
     await interaction.editReply({
       content:
         "❌ There was an error recording your feedback. Please try again.",

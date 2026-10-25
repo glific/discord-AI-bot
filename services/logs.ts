@@ -1,36 +1,30 @@
-import pino from "pino";
-import { createPinoBrowserSend, createWriteStream } from "pino-logflare";
+import { AsyncLocalStorage } from "async_hooks";
 
-const setLogs = (error: any) => {
-  const sourceToken = process.env.LOG_FLARE_SOURCE;
-  const apiKey = process.env.LOG_FLARE_API;
+const context = new AsyncLocalStorage<{ threadId?: string }>();
 
-  if (sourceToken && apiKey) {
-    const stream = createWriteStream({
-      apiKey,
-      sourceToken,
-    });
-
-    const send = createPinoBrowserSend({
-      apiKey,
-      sourceToken,
-    });
-
-    const logger = pino(
-      {
-        browser: {
-          transmit: {
-            // @ts-ignore
-            send,
-          },
-        },
-      },
-      stream,
+export const withThreadContext =
+  <A extends unknown[]>(
+    getThreadId: (...args: A) => string | null | undefined,
+    handler: (...args: A) => Promise<void>,
+  ) =>
+  (...args: A) =>
+    context.run({ threadId: getThreadId(...args) ?? undefined }, () =>
+      handler(...args),
     );
-    logger.error(error);
-  } else {
-    console.error(error);
-  }
+
+const withContext = (message: string) => {
+  const threadId = context.getStore()?.threadId;
+  return threadId ? `threadId=${threadId} ${message}` : message;
 };
 
-export default setLogs;
+export const logInfo = (message: string) => {
+  console.log(withContext(message));
+};
+
+export const logError = (message: string, error?: unknown) => {
+  if (error === undefined) {
+    console.error(withContext(message));
+  } else {
+    console.error(withContext(message), error);
+  }
+};

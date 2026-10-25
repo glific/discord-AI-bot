@@ -1,7 +1,7 @@
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { ThreadChannel } from "discord.js";
-import setLogs from "./logs";
+import { logError, logInfo } from "./logs";
 import { summarizeThreadForGithub } from "./openai";
 
 const ISSUE_LINK_RE = /https?:\/\/github\.com\/[^\s)]+\/issues\/\d+/i;
@@ -71,7 +71,7 @@ const addToProjectAsCurrentP0 = async (
   owner: string,
   projectNumber: number,
   issueNodeId: string,
-): Promise<void> => {
+): Promise<{ prioritySet: boolean; iterationSet: boolean }> => {
   const { organization } = await octokit.graphql<ProjectFields>(
     `query($owner: String!, $number: Int!) {
       organization(login: $owner) {
@@ -125,6 +125,11 @@ const addToProjectAsCurrentP0 = async (
   if (project.iteration && iterationId) {
     await setField(project.iteration.id, { iterationId });
   }
+
+  return {
+    prioritySet: Boolean(project.priority && p0),
+    iterationSet: Boolean(project.iteration && iterationId),
+  };
 };
 
 const attachToBoard = async (
@@ -132,7 +137,6 @@ const attachToBoard = async (
   owner: string,
   repo: string,
   issue: { id: number; node_id: string; number: number },
-  threadId: string,
 ): Promise<void> => {
   try {
     const epicNodeId = await findSupportEpicNodeId(octokit, owner, repo);
@@ -143,19 +147,28 @@ const attachToBoard = async (
         }`,
         { parent: epicNodeId, child: issue.node_id },
       );
+      logInfo(`Added issue #${issue.number} to support epic ${epicNodeId}`);
     } else {
-      setLogs({ message: "No open support epic found — issue left without parent", threadId });
+      logError("No open support epic found — issue left without parent");
     }
   } catch (error) {
-    setLogs({ message: "Error attaching issue to support epic", error, threadId });
+    logError("Error attaching issue to support epic", error);
   }
 
   const projectNumber = Number(process.env.GITHUB_PROJECT_NUMBER);
   if (!projectNumber) return;
   try {
-    await addToProjectAsCurrentP0(octokit, owner, projectNumber, issue.node_id);
+    const { prioritySet, iterationSet } = await addToProjectAsCurrentP0(
+      octokit,
+      owner,
+      projectNumber,
+      issue.node_id,
+    );
+    logInfo(
+      `Added issue #${issue.number} to project ${projectNumber} priority=${prioritySet ? SUPPORT_PRIORITY : "unset"} currentIteration=${iterationSet}`,
+    );
   } catch (error) {
-    setLogs({ message: "Error adding issue to project", error, threadId });
+    logError("Error adding issue to project", error);
   }
 };
 
@@ -198,11 +211,9 @@ export const createGitHubIssueFromThread = async (
   const octokit = createOctokit();
 
   if (!owner || !repo || !octokit) {
-    setLogs({
-      message:
-        "GitHub env vars missing (GITHUB_REPO_OWNER / GITHUB_REPO_NAME / GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY / GITHUB_APP_INSTALLATION_ID) — skipping issue creation",
-      threadId: thread.id,
-    });
+    logError(
+      "GitHub env vars missing (GITHUB_REPO_OWNER / GITHUB_REPO_NAME / GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY / GITHUB_APP_INSTALLATION_ID) — skipping issue creation",
+    );
     return;
   }
 
@@ -238,24 +249,15 @@ export const createGitHubIssueFromThread = async (
       labels: [SUPPORT_LABEL],
     });
 
-    setLogs({
-      message: `Created GitHub issue ${issue.html_url}`,
-      issueUrl: issue.html_url,
-      threadId: thread.id,
-    });
+    logInfo(`Created GitHub issue ${issue.html_url}`);
 
-    await attachToBoard(octokit, owner, repo, issue, thread.id);
+    await attachToBoard(octokit, owner, repo, issue);
 
     await thread.send(
       `🛠️ A GitHub issue has been created for this ticket: ${issue.html_url}`,
     );
   } catch (error) {
-    console.error("Error creating GitHub issue:", error);
-    setLogs({
-      message: "Error creating GitHub issue",
-      error,
-      threadId: thread.id,
-    });
+    logError("Error creating GitHub issue", error);
     try {
       await thread.send(
         "⚠️ Failed to create a GitHub issue automatically. Please create one manually.",
