@@ -22,8 +22,6 @@
     "isomorphic-fetch": "^3.0.0",
     "node-cron": "^3.0.0",
     "openai": "^4.47.1",
-    "pino": "^9.5.0",
-    "pino-logflare": "^0.4.2",
     "quickchart-js": "^3.1.1",
     "ts-node": "^10.9.2",
     "typescript": "^4.9.5"

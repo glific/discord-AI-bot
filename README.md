@@ -50,7 +50,6 @@ Fill in the required values in `.env`:
 | `GITHUB_REPO_NAME` | Repository name (`glific`) |
 | `GITHUB_PROJECT_NUMBER` | Org project the issue is added to (`8`); leave empty to skip |
 
-`LOG_FLARE_SOURCE` and `LOG_FLARE_API` are optional — the bot runs fine without them.
 `GITHUB_*` is optional — the bot runs fine without them.
 
 The GitHub App needs repository permissions **Issues: Read and write** and **Metadata: Read**, and

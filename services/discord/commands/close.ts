@@ -5,7 +5,7 @@ import {
   Message,
   ThreadChannel,
 } from "discord.js";
-import setLogs from "../../logs";
+import { logError } from "../../logs";
 import dayjs from "dayjs";
 import { updateSheets } from "../../sheet";
 import { getForumTags, getRatingButtons } from "../../../constants";
@@ -82,7 +82,7 @@ export const recordTicketClosure = async (
       }
     })
     .catch((err) => {
-      setLogs({ message: "Error categorizing thread", error: err, threadId });
+      logError("Error categorizing thread", err);
     });
 };
 
@@ -119,12 +119,7 @@ export const closeTicket = async (interaction: ChatInputCommandInteraction) => {
       content: `✅ Ticket closed successfully!`,
     });
   } catch (error) {
-    console.error("Error closing ticket:", error);
-    setLogs({
-      message: "Error closing ticket",
-      error: error,
-      threadId: thread.id,
-    });
+    logError("Error closing ticket", error);
 
     await interaction.editReply({
       content: `❌ ${
@@ -163,12 +158,7 @@ export const getFeedback = async (interaction: ButtonInteraction) => {
       components: [],
     });
   } catch (error) {
-    console.error("Error handling rating:", error);
-    setLogs({
-      message: "Error handling rating",
-      error: error,
-      threadId,
-    });
+    logError("Error handling rating", error);
     try {
       await interaction.editReply({
         content:
