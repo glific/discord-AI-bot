@@ -43,13 +43,19 @@ Fill in the required values in `.env`:
 | `GCP_CLIENT_EMAIL` | Google Cloud → IAM → Service Accounts → your service account email |
 | `GCP_PRIVATE_KEY` | Google Cloud → Service Account → Keys → Add Key (JSON) — copy the `private_key` field |
 | `SPREADSHEET_ID` | From the Google Sheet URL: `docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit` |
-| `GITHUB_TOKEN` | GitHub → Settings → Developer settings → Personal access tokens (needs `repo` and `project` scopes) |
+| `GITHUB_APP_ID` | GitHub App settings page → App ID |
+| `GITHUB_APP_PRIVATE_KEY` | GitHub App settings → Private keys → Generate (paste the `.pem` contents, newlines as `\n`) |
+| `GITHUB_APP_INSTALLATION_ID` | Org settings → GitHub Apps → Configure — the number at the end of the URL |
 | `GITHUB_REPO_OWNER` | GitHub username or org name (`glific`) |
 | `GITHUB_REPO_NAME` | Repository name (`glific`) |
 | `GITHUB_PROJECT_NUMBER` | Org project the issue is added to (`8`); leave empty to skip |
 
 `LOG_FLARE_SOURCE` and `LOG_FLARE_API` are optional — the bot runs fine without them.
 `GITHUB_*` is optional — the bot runs fine without them.
+
+The GitHub App needs repository permissions **Issues: Read and write** and **Metadata: Read**, and
+organization permission **Projects: Read and write**. Install it on the org, limited to the
+`GITHUB_REPO_NAME` repository. Issues it creates show the app as the author.
 
 When the **Dev** tag is added to a thread, the bot creates an issue labelled `support`, makes it a
 sub-issue of the newest open Epic labelled `support`, and adds it to `GITHUB_PROJECT_NUMBER` in the
