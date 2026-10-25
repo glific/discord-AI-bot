@@ -1,5 +1,5 @@
 import axios from "axios";
-import setLogs from "./logs";
+import { logError } from "./logs";
 
 const getAnswerFromOpenAIAssistant = async (message: string) => {
   try {
@@ -31,7 +31,7 @@ const getAnswerFromOpenAIAssistant = async (message: string) => {
       "Sorry, I am not able to answer this question. Please try again later."
     );
   } catch (e) {
-    setLogs(JSON.stringify(e));
+    logError("Error getting answer from OpenAI", e);
     return "Sorry, I am not able to answer this question due to timeout in API. Please try again later.";
   }
 };
@@ -66,7 +66,7 @@ export const summarizeThreadForGithub = async (
       "_(No summary generated.)_"
     );
   } catch (e) {
-    setLogs(JSON.stringify(e));
+    logError("Error summarising thread for GitHub", e);
     return "_(Summary generation failed — please review the thread manually.)_";
   }
 };
@@ -109,7 +109,7 @@ export const categorizeThread = async (transcript: string): Promise<string> => {
       response.data?.choices?.[0]?.message?.content?.trim() ?? "";
     return VALID_CATEGORIES.includes(category) ? category : "";
   } catch (e) {
-    setLogs(JSON.stringify(e));
+    logError("Error categorizing thread with OpenAI", e);
     return "";
   }
 };

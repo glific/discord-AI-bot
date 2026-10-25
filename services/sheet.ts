@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import { GoogleAuth } from "google-auth-library";
-import setLogs from "./logs";
+import { logError, logInfo } from "./logs";
 
 
 export const testSheetsAccess = async () => {
@@ -53,10 +53,10 @@ export const writeToSheets = async (values: any) => {
       insertDataOption: "INSERT_ROWS",
       range: "Tickets!A1",
     });
-    console.log("%d cells updated.", result.data.updates?.updatedCells);
+    logInfo(`${result.data.updates?.updatedCells ?? 0} cells updated`);
     return result;
   } catch (err) {
-    setLogs(err);
+    logError("Error writing sheet row", err);
   }
 };
 
@@ -84,14 +84,14 @@ export const updateSheets = async (
     const idIndex = header.indexOf("thread_id");
 
     if (idIndex === -1) {
-      setLogs({ message: "thread column not found", threadId: id });
+      logError("thread column not found");
       return;
     }
 
     const rowIndex = rows.findIndex((row) => row[idIndex] === id);
 
     if (rowIndex === -1) {
-      setLogs({ message: "Row with the specified ID not found", threadId: id });
+      logError("Row with the specified ID not found");
       return;
     }
 
@@ -99,7 +99,7 @@ export const updateSheets = async (
       async ([column, newValue]) => {
         const columnIndex = header.indexOf(column);
         if (columnIndex === -1) {
-          setLogs({ message: `Column "${column}" not found`, threadId: id });
+          logError(`Column "${column}" not found`);
           return;
         }
 
@@ -115,9 +115,9 @@ export const updateSheets = async (
     );
 
     const results = await Promise.all(updatePromises);
-    console.log("%d cells updated.", results.length);
+    logInfo(`${results.length} cells updated`);
     return results;
   } catch (err) {
-    setLogs({ error: err, message: "Error updating sheet", threadId: id });
+    logError("Error updating sheet", err);
   }
 };
