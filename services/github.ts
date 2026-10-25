@@ -145,24 +145,11 @@ const attachToBoard = async (
   }
 };
 
-const buildTranscript = async (thread: ThreadChannel): Promise<string> => {
-  const messages = await thread.messages.fetch({ limit: 100 });
-  return Array.from(messages.values())
-    .reverse()
-    .filter((m) => m.content?.trim())
-    .map(
-      (m) =>
-        `**${m.author.username}${m.author.bot ? " (bot)" : ""}:** ${m.content}`,
-    )
-    .join("\n\n");
-};
-
 const buildIssueBody = (params: {
   threadUrl: string;
   author: string;
   title: string;
   firstMessage: string;
-  transcript: string;
   summary: string;
 }) =>
   `## Summary
@@ -175,13 +162,6 @@ ${params.summary}
 
 ## Original message
 ${params.firstMessage || "_(no starter message content)_"}
-
-<details>
-<summary>Full thread transcript</summary>
-
-${params.transcript}
-
-</details>
 `;
 
 export const createGitHubIssueFromThread = async (
@@ -211,9 +191,8 @@ export const createGitHubIssueFromThread = async (
     const firstMessage = starter?.content ?? "";
     const author = starter?.author.username ?? thread.ownerId ?? "unknown";
 
-    const transcript = await buildTranscript(thread);
     const summary = await summarizeThreadForGithub(
-      `Title: ${thread.name}\n\n${transcript}`,
+      `Title: ${thread.name}\n\n${firstMessage}`,
     );
 
     const threadUrl = `https://discord.com/channels/${process.env.GUILD_ID}/${thread.id}`;
@@ -228,10 +207,15 @@ export const createGitHubIssueFromThread = async (
         author,
         title: thread.name,
         firstMessage,
-        transcript,
         summary,
       }),
       labels: [SUPPORT_LABEL],
+    });
+
+    setLogs({
+      message: `Created GitHub issue ${issue.html_url}`,
+      issueUrl: issue.html_url,
+      threadId: thread.id,
     });
 
     await attachToBoard(octokit, owner, repo, issue, thread.id);
