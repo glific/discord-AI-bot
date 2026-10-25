@@ -1,3 +1,4 @@
+import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import { ThreadChannel } from "discord.js";
 import setLogs from "./logs";
@@ -6,6 +7,22 @@ import { summarizeThreadForGithub } from "./openai";
 const ISSUE_LINK_RE = /https?:\/\/github\.com\/[^\s)]+\/issues\/\d+/i;
 const SUPPORT_LABEL = "support";
 const SUPPORT_PRIORITY = "P0";
+
+const createOctokit = (): Octokit | null => {
+  const appId = process.env.GITHUB_APP_ID;
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY?.split("\\n").join("\n");
+  const installationId = process.env.GITHUB_APP_INSTALLATION_ID;
+
+  if (appId && privateKey && installationId) {
+    return new Octokit({
+      authStrategy: createAppAuth,
+      auth: { appId, privateKey, installationId },
+    });
+  }
+
+  const token = process.env.GITHUB_TOKEN;
+  return token ? new Octokit({ auth: token }) : null;
+};
 
 type ProjectFields = {
   organization: {
@@ -181,12 +198,12 @@ export const createGitHubIssueFromThread = async (
 ): Promise<void> => {
   const owner = process.env.GITHUB_REPO_OWNER;
   const repo = process.env.GITHUB_REPO_NAME;
-  const token = process.env.GITHUB_TOKEN;
+  const octokit = createOctokit();
 
-  if (!owner || !repo || !token) {
+  if (!owner || !repo || !octokit) {
     setLogs({
       message:
-        "GitHub env vars missing (GITHUB_REPO_OWNER / GITHUB_REPO_NAME / GITHUB_TOKEN) — skipping issue creation",
+        "GitHub env vars missing (GITHUB_REPO_OWNER / GITHUB_REPO_NAME and GITHUB_APP_* or GITHUB_TOKEN) — skipping issue creation",
       threadId: thread.id,
     });
     return;
@@ -209,7 +226,6 @@ export const createGitHubIssueFromThread = async (
     );
 
     const threadUrl = `https://discord.com/channels/${process.env.GUILD_ID}/${thread.id}`;
-    const octokit = new Octokit({ auth: token });
 
     const { data: issue } = await octokit.issues.create({
       owner,
